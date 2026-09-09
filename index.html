@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Studio A.A">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>BARBEARIA STUDIO A.A</title>
 <style>
 :root{--bg:#070707;--panel:#111;--panel2:#171717;--line:#2b2415;--gold:#d6a82e;--gold2:#f0c85a;--txt:#f6f1e6;--muted:#a9a39a;--ok:#58c47a;--danger:#ef6b6b}
@@ -19,7 +19,7 @@ header{position:sticky;top:0;z-index:20;background:#080808e8;border-bottom:1px s
 .nav button{width:auto;margin:0;padding:9px 13px;background:#181818;color:#fff;border:1px solid #3a311e}
 main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:stretch}
 .card{background:linear-gradient(145deg,#151515,#0e0e0e);border:1px solid var(--line);border-radius:24px;box-shadow:0 18px 60px #0008;overflow:hidden}
-.heroMedia{min-height:440px;background:#0e0e0e;display:flex;align-items:center;justify-content:center}.heroMedia img{width:100%;height:100%;object-fit:cover;display:block}
+.heroMedia{min-height:360px;height:360px;background:#0e0e0e;display:flex;align-items:center;justify-content:center;padding:22px}.heroMedia img{width:100%;height:100%;object-fit:contain;display:block}
 .heroCopy{padding:34px;display:flex;flex-direction:column;justify-content:center}.eyebrow{color:var(--gold);font-size:12px;font-weight:900;letter-spacing:2px}.hero h1{font-size:clamp(38px,6vw,68px);line-height:.98;margin:12px 0}.hero p{color:var(--muted);font-size:17px;line-height:1.6}.gold{color:var(--gold)}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{border:1px solid #493b1c;background:#191919;color:#fff;border-radius:13px;padding:13px 17px;font-weight:900;cursor:pointer}.btn.primary{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#111;border-color:var(--gold);box-shadow:0 8px 24px #d6a82e33}.btn.danger{border-color:#5a2424;color:#ffb0b0}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.section{margin-top:22px}.sectionTitle{font-size:12px;color:var(--gold);font-weight:900;letter-spacing:2px;margin:0 0 10px}
@@ -30,14 +30,14 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;color:#bdb7ad;font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}.slot{background:#1d1d1d;color:#fff;border:1px solid #393939;border-radius:10px;padding:11px;cursor:pointer}.slot.active{background:var(--gold);color:#111;border-color:var(--gold)}
 .notice{margin-top:12px;padding:12px;border-radius:12px;background:#151515;border:1px solid #2b2b2b;color:#aaa;font-size:13px}.notice.ok{border-color:#245a34;color:#bde8c7}.notice.err{border-color:#642b2b;color:#ffc0c0}
 .admin{display:none;margin-top:22px;padding:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}.table .item{background:#111}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
-@media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:330px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
+@media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:300px;height:300px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
 </style>
 </head>
 <body>
-<header><div class="nav"><div class="brand"><img src="icon-180.png" alt=""><span><span class="gold">BARBEARIA</span> STUDIO A.A</span></div><button class="btn" onclick="openAdmin()">PAINEL</button></div></header>
+<header><div class="nav"><div class="brand"><img src="icons/icon-180.png" alt=""><span><span class="gold">BARBEARIA</span> STUDIO A.A</span></div><button class="btn" onclick="openAdmin()">PAINEL</button></div></header>
 <main>
 <section class="hero card">
-  <div class="heroMedia"><img src="icon-512.png" alt="BARBEARIA STUDIO A.A"></div>
+  <div class="heroMedia"><img src="icons/icon-512.png" alt="BARBEARIA STUDIO A.A"></div>
   <div class="heroCopy"><div class="eyebrow">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário. Seu atendimento começa com um agendamento simples e profissional.</p><div class="actions"><button class="btn primary" onclick="showBooking()">AGENDAR AGORA</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div>
 </section>
 
