@@ -1,0 +1,46 @@
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090909"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Studio A.A">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/icon-180.png">
+<title>BARBEARIA STUDIO A.A</title>
+<style>
+:root{--bg:#090909;--card:#151515;--gold:#d4a72c;--text:#f5f0e3;--muted:#aaa}*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top,#292318,#090909 50%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:18px;position:sticky;top:0;background:#090909e8;backdrop-filter:blur(12px);z-index:3}.brand{font-weight:900;letter-spacing:2px}.gold{color:var(--gold)}
+main{max-width:720px;margin:auto;padding:12px 18px 90px}.hero{border:1px solid #4a3a18;border-radius:24px;overflow:hidden;background:#111}.hero img{width:100%;display:block;aspect-ratio:1.3;object-fit:cover}.heroText{padding:18px}
+h1{font-size:30px;margin:0 0 5px}.sub{color:var(--gold);font-weight:900;letter-spacing:1px}
+.card{background:#151515;border:1px solid #2b2b2b;border-radius:18px;padding:14px;margin:14px 0}.title{color:var(--gold);font-size:13px;font-weight:900;letter-spacing:1.5px;margin-bottom:8px}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 4px;border-bottom:1px solid #292929}.row:last-child{border:0}.price{color:var(--gold);font-weight:900;white-space:nowrap}.muted{color:var(--muted);font-size:13px}
+button,select,input{font:inherit}button{border:0;border-radius:13px;padding:13px 16px;font-weight:900}.primary{background:var(--gold);color:#111;width:100%;margin-top:15px}
+#booking{display:none}.field{margin:10px 0}.field label{display:block;color:#bbb;font-size:13px;margin-bottom:6px}
+select,input{width:100%;background:#0d0d0d;color:white;border:1px solid #3c3c3c;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}.slot{background:#232323;color:#fff;border:1px solid #444}.slot.active{background:var(--gold);color:#111;border-color:var(--gold)}
+.small{text-align:center;color:#888;font-size:12px;margin-top:12px;line-height:1.4}
+</style></head><body>
+<header><div class="brand">👑 <span class="gold">BARBEARIA</span> STUDIO A.A</div></header>
+<main><section class="hero"><img src="icons/icon-512.png" alt="BARBEARIA STUDIO A.A"><div class="heroText">
+<h1>Seu estilo.</h1><div class="sub">NOSSO COMPROMISSO.</div><button class="primary" onclick="booking()">AGENDAR AGORA</button></div></section>
+<section class="card"><div class="title">SERVIÇOS</div>
+<div class="row"><span>Corte Masculino<br><span class="muted">30 min</span></span><span class="price">R$ 35,00</span></div>
+<div class="row"><span>Barba Tradicional<br><span class="muted">20 min</span></span><span class="price">R$ 25,00</span></div>
+<div class="row"><span>Combo Corte + Barba<br><span class="muted">50 min</span></span><span class="price">R$ 55,00</span></div>
+<div class="row"><span>Sobrancelha<br><span class="muted">15 min</span></span><span class="price">R$ 15,00</span></div></section>
+<section class="card"><div class="title">NOSSOS BARBEIROS</div>
+<div class="row"><span>Lucas<br><span class="muted">Especialista em degradê</span></span><span>⭐ 4,9</span></div>
+<div class="row"><span>Rafael<br><span class="muted">Barba e estilo</span></span><span>⭐ 4,8</span></div>
+<div class="row"><span>Thiago<br><span class="muted">Corte masculino</span></span><span>⭐ 4,7</span></div></section>
+<section id="booking" class="card"><div class="title">AGENDAR HORÁRIO</div>
+<div class="field"><label>Serviço</label><select><option>Corte Masculino — R$ 35,00</option><option>Barba Tradicional — R$ 25,00</option><option>Combo Corte + Barba — R$ 55,00</option></select></div>
+<div class="field"><label>Barbeiro</label><select><option>Lucas</option><option>Rafael</option><option>Thiago</option></select></div>
+<div class="field"><label>Data</label><input id="date" type="date"></div>
+<label class="muted">Horários</label><div class="slots" id="slots"></div>
+<button class="primary" onclick="confirmar()">CONFIRMAR AGENDAMENTO</button>
+<div class="small">Versão instalável PWA. Para salvar agendamentos no banco e enviar confirmações reais, conecte a API PHP/MySQL.</div></section></main>
+<script>
+const times=["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];let chosen="";
+function booking(){document.querySelector("#booking").style.display="block";document.querySelector("#booking").scrollIntoView({behavior:"smooth"})}
+function slots(){const e=document.querySelector("#slots");times.forEach(t=>{const b=document.createElement("button");b.className="slot";b.textContent=t;b.onclick=()=>{document.querySelectorAll(".slot").forEach(x=>x.classList.remove("active"));b.classList.add("active");chosen=t};e.appendChild(b)})}
+function confirmar(){const d=document.querySelector("#date").value;if(!d||!chosen)return alert("Escolha a data e o horário.");alert("Horário selecionado: "+d+" às "+chosen)}
+document.querySelector("#date").value=new Date().toISOString().slice(0,10);slots();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+</script></body></html>
