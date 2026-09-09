@@ -1,46 +1,133 @@
-<!doctype html><html lang="pt-BR"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#090909"><meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Studio A.A">
-<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Studio A.A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>BARBEARIA STUDIO A.A</title>
 <style>
-:root{--bg:#090909;--card:#151515;--gold:#d4a72c;--text:#f5f0e3;--muted:#aaa}*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(circle at top,#292318,#090909 50%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-header{padding:18px;position:sticky;top:0;background:#090909e8;backdrop-filter:blur(12px);z-index:3}.brand{font-weight:900;letter-spacing:2px}.gold{color:var(--gold)}
-main{max-width:720px;margin:auto;padding:12px 18px 90px}.hero{border:1px solid #4a3a18;border-radius:24px;overflow:hidden;background:#111}.hero img{width:100%;display:block;aspect-ratio:1.3;object-fit:cover}.heroText{padding:18px}
-h1{font-size:30px;margin:0 0 5px}.sub{color:var(--gold);font-weight:900;letter-spacing:1px}
-.card{background:#151515;border:1px solid #2b2b2b;border-radius:18px;padding:14px;margin:14px 0}.title{color:var(--gold);font-size:13px;font-weight:900;letter-spacing:1.5px;margin-bottom:8px}
-.row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 4px;border-bottom:1px solid #292929}.row:last-child{border:0}.price{color:var(--gold);font-weight:900;white-space:nowrap}.muted{color:var(--muted);font-size:13px}
-button,select,input{font:inherit}button{border:0;border-radius:13px;padding:13px 16px;font-weight:900}.primary{background:var(--gold);color:#111;width:100%;margin-top:15px}
-#booking{display:none}.field{margin:10px 0}.field label{display:block;color:#bbb;font-size:13px;margin-bottom:6px}
-select,input{width:100%;background:#0d0d0d;color:white;border:1px solid #3c3c3c;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}.slot{background:#232323;color:#fff;border:1px solid #444}.slot.active{background:var(--gold);color:#111;border-color:var(--gold)}
-.small{text-align:center;color:#888;font-size:12px;margin-top:12px;line-height:1.4}
-</style></head><body>
-<header><div class="brand">👑 <span class="gold">BARBEARIA</span> STUDIO A.A</div></header>
-<main><section class="hero"><img src="icon-512.png" alt="BARBEARIA STUDIO A.A"><div class="heroText">
-<h1>Seu estilo.</h1><div class="sub">NOSSO COMPROMISSO.</div><button class="primary" onclick="booking()">AGENDAR AGORA</button></div></section>
-<section class="card"><div class="title">SERVIÇOS</div>
-<div class="row"><span>Corte Masculino<br><span class="muted">30 min</span></span><span class="price">R$ 35,00</span></div>
-<div class="row"><span>Barba Tradicional<br><span class="muted">20 min</span></span><span class="price">R$ 25,00</span></div>
-<div class="row"><span>Combo Corte + Barba<br><span class="muted">50 min</span></span><span class="price">R$ 55,00</span></div>
-<div class="row"><span>Sobrancelha<br><span class="muted">15 min</span></span><span class="price">R$ 15,00</span></div></section>
-<section class="card"><div class="title">NOSSOS BARBEIROS</div>
-<div class="row"><span>Lucas<br><span class="muted">Especialista em degradê</span></span><span>⭐ 4,9</span></div>
-<div class="row"><span>Rafael<br><span class="muted">Barba e estilo</span></span><span>⭐ 4,8</span></div>
-<div class="row"><span>Thiago<br><span class="muted">Corte masculino</span></span><span>⭐ 4,7</span></div></section>
-<section id="booking" class="card"><div class="title">AGENDAR HORÁRIO</div>
-<div class="field"><label>Serviço</label><select><option>Corte Masculino — R$ 35,00</option><option>Barba Tradicional — R$ 25,00</option><option>Combo Corte + Barba — R$ 55,00</option></select></div>
-<div class="field"><label>Barbeiro</label><select><option>Lucas</option><option>Rafael</option><option>Thiago</option></select></div>
-<div class="field"><label>Data</label><input id="date" type="date"></div>
-<label class="muted">Horários</label><div class="slots" id="slots"></div>
-<button class="primary" onclick="confirmar()">CONFIRMAR AGENDAMENTO</button>
-<div class="small">Versão instalável PWA. Para salvar agendamentos no banco e enviar confirmações reais, conecte a API PHP/MySQL.</div></section></main>
+:root{--bg:#070707;--panel:#111;--panel2:#171717;--line:#2b2415;--gold:#d6a82e;--gold2:#f0c85a;--txt:#f6f1e6;--muted:#a9a39a;--ok:#58c47a;--danger:#ef6b6b}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 50% -10%,#302716 0,#0b0b0b 38%,#050505 100%);color:var(--txt);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:20;background:#080808e8;border-bottom:1px solid #201b12;backdrop-filter:blur(16px)}
+.nav{max-width:1100px;margin:auto;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:900;letter-spacing:1.5px;font-size:14px}.brand img{width:34px;height:34px;border-radius:9px}
+.nav button{width:auto;margin:0;padding:9px 13px;background:#181818;color:#fff;border:1px solid #3a311e}
+main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:stretch}
+.card{background:linear-gradient(145deg,#151515,#0e0e0e);border:1px solid var(--line);border-radius:24px;box-shadow:0 18px 60px #0008;overflow:hidden}
+.heroMedia{min-height:440px;background:#0e0e0e;display:flex;align-items:center;justify-content:center}.heroMedia img{width:100%;height:100%;object-fit:cover;display:block}
+.heroCopy{padding:34px;display:flex;flex-direction:column;justify-content:center}.eyebrow{color:var(--gold);font-size:12px;font-weight:900;letter-spacing:2px}.hero h1{font-size:clamp(38px,6vw,68px);line-height:.98;margin:12px 0}.hero p{color:var(--muted);font-size:17px;line-height:1.6}.gold{color:var(--gold)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{border:1px solid #493b1c;background:#191919;color:#fff;border-radius:13px;padding:13px 17px;font-weight:900;cursor:pointer}.btn.primary{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#111;border-color:var(--gold);box-shadow:0 8px 24px #d6a82e33}.btn.danger{border-color:#5a2424;color:#ffb0b0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.section{margin-top:22px}.sectionTitle{font-size:12px;color:var(--gold);font-weight:900;letter-spacing:2px;margin:0 0 10px}
+.item{padding:17px;border-top:1px solid #272727;display:flex;justify-content:space-between;gap:12px;align-items:center}.item:first-child{border-top:0}.item strong{display:block}.muted{color:var(--muted);font-size:13px}.price{color:var(--gold2);font-weight:900;white-space:nowrap}
+.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#2a2418;border:1px solid #5b471f;color:var(--gold2);font-weight:900}
+.barber{display:flex;gap:12px;align-items:center}.rating{color:#f0c85a;font-size:13px}
+.booking{display:none;margin-top:22px;padding:24px}.steps{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}.step{padding:8px 10px;border:1px solid #373737;border-radius:99px;color:#777;font-size:12px;font-weight:800}.step.active{border-color:var(--gold);color:var(--gold)}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;color:#bdb7ad;font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}.slot{background:#1d1d1d;color:#fff;border:1px solid #393939;border-radius:10px;padding:11px;cursor:pointer}.slot.active{background:var(--gold);color:#111;border-color:var(--gold)}
+.notice{margin-top:12px;padding:12px;border-radius:12px;background:#151515;border:1px solid #2b2b2b;color:#aaa;font-size:13px}.notice.ok{border-color:#245a34;color:#bde8c7}.notice.err{border-color:#642b2b;color:#ffc0c0}
+.admin{display:none;margin-top:22px;padding:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}.table .item{background:#111}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
+@media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:330px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
+</style>
+</head>
+<body>
+<header><div class="nav"><div class="brand"><img src="icons/icon-180.png" alt=""><span><span class="gold">BARBEARIA</span> STUDIO A.A</span></div><button class="btn" onclick="openAdmin()">PAINEL</button></div></header>
+<main>
+<section class="hero card">
+  <div class="heroMedia"><img src="icons/icon-512.png" alt="BARBEARIA STUDIO A.A"></div>
+  <div class="heroCopy"><div class="eyebrow">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário. Seu atendimento começa com um agendamento simples e profissional.</p><div class="actions"><button class="btn primary" onclick="showBooking()">AGENDAR AGORA</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div>
+</section>
+
+<section id="services" class="section"><div class="sectionTitle">SERVIÇOS</div><div class="card" id="serviceList"></div></section>
+<section class="section"><div class="sectionTitle">NOSSOS BARBEIROS</div><div class="grid" id="barberList"></div></section>
+
+<section id="booking" class="booking card">
+  <div class="sectionTitle">AGENDAR HORÁRIO</div>
+  <div class="steps"><span class="step active">1 Serviço</span><span class="step active">2 Barbeiro</span><span class="step active">3 Data</span><span class="step active">4 Horário</span></div>
+  <div class="formgrid">
+    <div class="field"><label>Serviço</label><select id="service"></select></div>
+    <div class="field"><label>Barbeiro</label><select id="barber"></select></div>
+    <div class="field"><label>Seu nome</label><input id="name" placeholder="Nome completo"></div>
+    <div class="field"><label>WhatsApp</label><input id="phone" placeholder="(13) 99999-9999" inputmode="tel"></div>
+    <div class="field"><label>Data</label><input id="date" type="date"></div>
+  </div>
+  <div class="field" style="margin-top:13px"><label>Horário disponível</label><div class="slots" id="slots"></div></div>
+  <div class="actions"><button class="btn primary" onclick="confirmBooking()">CONFIRMAR AGENDAMENTO</button><button class="btn" onclick="hideBooking()">FECHAR</button></div>
+  <div id="message"></div>
+</section>
+
+<section id="admin" class="admin card">
+  <div class="sectionTitle">PAINEL ADMINISTRATIVO</div>
+  <div id="loginBox">
+    <div class="formgrid"><div class="field"><label>E-mail</label><input id="adminEmail" value="admin@studioaa.com"></div><div class="field"><label>Senha</label><input id="adminPass" type="password" placeholder="Senha"></div></div>
+    <button class="btn primary" onclick="adminLogin()">ENTRAR</button>
+    <div class="notice">O painel abaixo é preparado para a API PHP/MySQL. Nesta versão, a tela pública funciona imediatamente; depois de conectar a API, os dados passam a ser persistidos no banco.</div>
+  </div>
+  <div id="dashboard" style="display:none">
+    <div class="stats"><div class="stat">Hoje<b id="sToday">0</b><span class="muted">atendimentos</span></div><div class="stat">Clientes<b id="sClients">0</b><span class="muted">cadastrados</span></div><div class="stat">Barbeiros<b id="sBarbers">0</b><span class="muted">ativos</span></div><div class="stat">Serviços<b id="sServices">0</b><span class="muted">disponíveis</span></div></div>
+    <div class="table" id="appointments"></div>
+    <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div>
+  </div>
+</section>
+<div class="footer">BARBEARIA STUDIO A.A • ESTILO • RESPEITO • ATITUDE</div>
+</main>
 <script>
-const times=["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];let chosen="";
-function booking(){document.querySelector("#booking").style.display="block";document.querySelector("#booking").scrollIntoView({behavior:"smooth"})}
-function slots(){const e=document.querySelector("#slots");times.forEach(t=>{const b=document.createElement("button");b.className="slot";b.textContent=t;b.onclick=()=>{document.querySelectorAll(".slot").forEach(x=>x.classList.remove("active"));b.classList.add("active");chosen=t};e.appendChild(b)})}
-function confirmar(){const d=document.querySelector("#date").value;if(!d||!chosen)return alert("Escolha a data e o horário.");alert("Horário selecionado: "+d+" às "+chosen)}
-document.querySelector("#date").value=new Date().toISOString().slice(0,10);slots();
+const API = window.STUDIO_AA_API || ""; // Ex.: https://seu-backend.onrender.com
+const fallbackServices=[
+ {id:1,name:"Corte Masculino",duration:30,price:35},
+ {id:2,name:"Barba Tradicional",duration:20,price:25},
+ {id:3,name:"Combo Corte + Barba",duration:50,price:55},
+ {id:4,name:"Sobrancelha",duration:15,price:15},
+ {id:5,name:"Pigmentação de Barba",duration:30,price:40}
+];
+const fallbackBarbers=[
+ {id:1,name:"Lucas",specialty:"Especialista em degradê",rating:4.9},
+ {id:2,name:"Rafael",specialty:"Barba e bigode",rating:4.8},
+ {id:3,name:"Thiago",specialty:"Corte masculino",rating:4.7},
+ {id:4,name:"Matheus",specialty:"Estilo clássico",rating:4.9}
+];
+const times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
+let services=[...fallbackServices], barbers=[...fallbackBarbers], chosenTime="";
+
+function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function render(){
+ document.querySelector("#serviceList").innerHTML=services.map(s=>`<div class="item"><span><strong>${esc(s.name)}</strong><span class="muted">${s.duration} min</span></span><span class="price">${money(s.price)}</span></div>`).join("");
+ document.querySelector("#barberList").innerHTML=barbers.map(b=>`<div class="card" style="padding:16px"><div class="barber"><div class="avatar">${esc(b.name[0])}</div><div><strong>${esc(b.name)}</strong><div class="muted">${esc(b.specialty||"Barbeiro")}</div><div class="rating">★ ${b.rating||"5.0"}</div></div></div></div>`).join("");
+ document.querySelector("#service").innerHTML=services.map(s=>`<option value="${s.id}">${esc(s.name)} — ${money(s.price)}</option>`).join("");
+ document.querySelector("#barber").innerHTML=barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
+ renderSlots();
+}
+function renderSlots(){document.querySelector("#slots").innerHTML=times.map(t=>`<button type="button" class="slot ${chosenTime===t?"active":""}" onclick="chooseTime('${t}')">${t}</button>`).join("")}
+function chooseTime(t){chosenTime=t;renderSlots()}
+function showBooking(){document.querySelector("#booking").style.display="block";document.querySelector("#booking").scrollIntoView({behavior:"smooth"});if(!document.querySelector("#date").value)document.querySelector("#date").value=new Date().toISOString().slice(0,10)}
+function hideBooking(){document.querySelector("#booking").style.display="none"}
+async function api(path,options){const r=await fetch(API+path,{headers:{"Content-Type":"application/json"},...options});if(!r.ok)throw new Error(await r.text());return r.json()}
+async function loadApi(){
+ if(!API)return;
+ try{services=await api("/api/services");barbers=await api("/api/barbers");render()}catch(e){console.warn("API indisponível; usando dados locais.",e)}
+}
+async function confirmBooking(){
+ const payload={service_id:Number(document.querySelector("#service").value),barber_id:Number(document.querySelector("#barber").value),customer_name:document.querySelector("#name").value.trim(),customer_phone:document.querySelector("#phone").value.trim(),date:document.querySelector("#date").value,time:chosenTime};
+ if(!payload.customer_name||!payload.customer_phone||!payload.date||!payload.time){document.querySelector("#message").innerHTML='<div class="notice err">Preencha nome, WhatsApp, data e horário.</div>';return}
+ if(API){
+  try{const r=await api("/api/appointments",{method:"POST",body:JSON.stringify(payload)});document.querySelector("#message").innerHTML=`<div class="notice ok">Agendamento confirmado! Código: <b>${esc(r.id)}</b></div>`;return}catch(e){document.querySelector("#message").innerHTML='<div class="notice err">Não foi possível salvar no servidor. Verifique a API.</div>';return}
+ }
+ const list=JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");
+ list.push({...payload,id:Date.now(),created_at:new Date().toISOString(),status:"Pendente"});
+ localStorage.setItem("studioAAAppointments",JSON.stringify(list));
+ document.querySelector("#message").innerHTML='<div class="notice ok">Agendamento registrado neste dispositivo. Ao conectar a API, ele será salvo no banco e ficará disponível no painel.</div>';
+}
+function openAdmin(){document.querySelector("#admin").style.display="block";document.querySelector("#admin").scrollIntoView({behavior:"smooth"})}
+function adminLogin(){const pass=document.querySelector("#adminPass").value;if(pass==="studioaa123"){document.querySelector("#loginBox").style.display="none";document.querySelector("#dashboard").style.display="block";loadDashboard()}else alert("Senha incorreta.")}
+function loadDashboard(){const list=JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");document.querySelector("#sToday").textContent=list.length;document.querySelector("#sClients").textContent=new Set(list.map(x=>x.customer_phone)).size;document.querySelector("#sBarbers").textContent=barbers.length;document.querySelector("#sServices").textContent=services.length;document.querySelector("#appointments").innerHTML=list.length?list.map(a=>`<div class="item"><span><strong>${esc(a.customer_name)}</strong><span class="muted">${esc(a.date)} • ${esc(a.time)} • ${esc(a.customer_phone)}</span></span><span class="price">${esc(a.status)}</span></div>`).join(""):'<div class="item"><span class="muted">Nenhum agendamento neste dispositivo.</span></div>'}
+function adminLogout(){document.querySelector("#dashboard").style.display="none";document.querySelector("#loginBox").style.display="block";document.querySelector("#adminPass").value=""}
+document.querySelector("#date").min=new Date().toISOString().slice(0,10);
+render();loadApi();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
-</script></body></html>
+</script>
+</body>
+</html>
