@@ -27,7 +27,7 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#2a2418;border:1px solid #5b471f;color:var(--gold2);font-weight:900}
 .barber{display:flex;gap:12px;align-items:center}.rating{color:#f0c85a;font-size:13px}
 .booking{display:none;margin-top:22px;padding:24px}.steps{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}.step{padding:8px 10px;border:1px solid #373737;border-radius:99px;color:#777;font-size:12px;font-weight:800}.step.active{border-color:var(--gold);color:var(--gold)}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;color:#bdb7ad;font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}.slot{background:#1d1d1d;color:#fff;border:1px solid #393939;border-radius:10px;padding:11px;cursor:pointer}.slot.active{background:var(--gold);color:#111;border-color:var(--gold)}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;color:#bdb7ad;font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}.slot{background:#1d1d1d;color:#fff;border:1px solid #393939;border-radius:10px;padding:11px;cursor:pointer}.slot.active{background:var(--gold);color:#111;border-color:var(--gold)}.slot.disabled{background:#0d0d0d;color:#666;border-color:#252525;cursor:not-allowed;text-decoration:line-through;opacity:.75}
 .notice{margin-top:12px;padding:12px;border-radius:12px;background:#151515;border:1px solid #2b2b2b;color:#aaa;font-size:13px}.notice.ok{border-color:#245a34;color:#bde8c7}.notice.err{border-color:#642b2b;color:#ffc0c0}
 .admin{display:none;margin-top:22px;padding:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}.table .item{background:#111}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
 @media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:300px;height:300px;padding:20px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
@@ -38,7 +38,7 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 <main>
 <section class="hero card">
   <div class="heroMedia"><img src="logo-site.png" alt="BARBEARIA STUDIO A.A"></div>
-  <div class="heroCopy"><div class="eyebrow">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário. Seu atendimento começa com um agendamento simples e profissional.</p><div class="actions"><button class="btn primary" onclick="showBooking()">showBooking</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div>
+  <div class="heroCopy"><div class="eyebrow">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário. Seu atendimento começa com um agendamento simples e profissional.</p><div class="actions"><button class="btn primary" onclick="showBooking()">AGENDAR AGORA</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div>
 </section>
 
 <section id="services" class="section"><div class="sectionTitle">SERVIÇOS</div><div class="card" id="serviceList"></div></section>
@@ -101,31 +101,172 @@ function render(){
  document.querySelector("#barber").innerHTML=barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
  renderSlots();
 }
-function renderSlots(){document.querySelector("#slots").innerHTML=times.map(t=>`<button type="button" class="slot ${chosenTime===t?"active":""}" onclick="chooseTime('${t}')">${t}</button>`).join("")}
-function chooseTime(t){chosenTime=t;renderSlots()}
-function showBooking(){document.querySelector("#booking").style.display="block";document.querySelector("#booking").scrollIntoView({behavior:"smooth"});if(!document.querySelector("#date").value)document.querySelector("#date").value=new Date().toISOString().slice(0,10)}
+let bookedAppointments=[];
+
+function normalizeAppointment(a){
+ return {
+  id:a?.id,
+  date:a?.date||a?.appointment_date||a?.booking_date||a?.data||a?.day,
+  time:a?.time||a?.appointment_time||a?.booking_time||a?.hora,
+  barber_id:a?.barber_id??a?.barberId??a?.barbeiro_id,
+  barber_name:a?.barber_name||a?.barber||a?.barbeiro,
+  customer_name:a?.customer_name||a?.name||a?.customer||a?.cliente_nome,
+  customer_phone:a?.customer_phone||a?.phone||a?.telefone||a?.cliente_telefone,
+  service_name:a?.service_name||a?.service||a?.servico_nome,
+  status:a?.status||"Pendente"
+ };
+}
+
+function extractAppointments(value,out=[]){
+ if(!value)return out;
+ if(Array.isArray(value)){value.forEach(v=>extractAppointments(v,out));return out}
+ if(typeof value==="object"){
+  const a=normalizeAppointment(value);
+  if(a.date&&a.time&&(a.barber_id!=null||a.barber_name||a.customer_name))out.push(a);
+  Object.values(value).forEach(v=>{if(v&&typeof v==="object")extractAppointments(v,out)});
+ }
+ return out;
+}
+
+function isBooked(barberId,date,time){
+ return bookedAppointments.some(a=>{
+  const sameDate=String(a.date||"").slice(0,10)===String(date||"").slice(0,10);
+  const sameTime=String(a.time||"").slice(0,5)===String(time||"").slice(0,5);
+  const sameBarber=a.barber_id!=null ? Number(a.barber_id)===Number(barberId) : true;
+  const active=!["cancelado","cancelada","canceled","cancelled"].includes(String(a.status||"").toLowerCase());
+  return sameDate&&sameTime&&sameBarber&&active;
+ });
+}
+
+function renderSlots(){
+ const date=document.querySelector("#date").value;
+ const barberId=document.querySelector("#barber").value;
+ document.querySelector("#slots").innerHTML=times.map(t=>{
+  const busy=isBooked(barberId,date,t);
+  return `<button type="button" class="slot ${chosenTime===t&&!busy?"active":""} ${busy?"disabled":""}" ${busy?"disabled":""} title="${busy?"Horário já reservado":"Selecionar horário"}" onclick="${busy?"":"chooseTime('"+t+"')"}">${t}</button>`;
+ }).join("");
+ if(chosenTime&&isBooked(barberId,date,chosenTime))chosenTime="";
+}
+
+function chooseTime(t){
+ if(isBooked(document.querySelector("#barber").value,document.querySelector("#date").value,t))return;
+ chosenTime=t;
+ renderSlots();
+}
+
+function showBooking(){
+ document.querySelector("#booking").style.display="block";
+ document.querySelector("#booking").scrollIntoView({behavior:"smooth"});
+ if(!document.querySelector("#date").value)document.querySelector("#date").value=new Date().toISOString().slice(0,10);
+ loadBookedAppointments();
+}
+
 function hideBooking(){document.querySelector("#booking").style.display="none"}
-async function api(path,options){const r=await fetch(API+path,{headers:{"Content-Type":"application/json"},...options});if(!r.ok)throw new Error(await r.text());return r.json()}
+
+async function api(path,options){
+ const r=await fetch(API+path,{headers:{"Content-Type":"application/json"},...options});
+ if(!r.ok)throw new Error(await r.text());
+ return r.json();
+}
+
+async function loadBookedAppointments(){
+ if(!API)return;
+ try{
+  const data=await api("/api/admin/dashboard");
+  bookedAppointments=extractAppointments(data,[]);
+  renderSlots();
+ }catch(e){
+  console.warn("Não foi possível consultar os agendamentos para bloquear horários.",e);
+ }
+}
+
 async function loadApi(){
  if(!API)return;
- try{services=await api("/api/services");barbers=await api("/api/barbers");render()}catch(e){console.warn("API indisponível; usando dados locais.",e)}
+ try{
+  services=await api("/api/services");
+  barbers=await api("/api/barbers");
+  render();
+  await loadBookedAppointments();
+ }catch(e){
+  console.warn("API indisponível; usando dados locais.",e);
+ }
 }
+
 async function confirmBooking(){
- const payload={service_id:Number(document.querySelector("#service").value),barber_id:Number(document.querySelector("#barber").value),customer_name:document.querySelector("#name").value.trim(),customer_phone:document.querySelector("#phone").value.trim(),date:document.querySelector("#date").value,time:chosenTime};
- if(!payload.customer_name||!payload.customer_phone||!payload.date||!payload.time){document.querySelector("#message").innerHTML='<div class="notice err">Preencha nome, WhatsApp, data e horário.</div>';return}
+ const payload={
+  service_id:Number(document.querySelector("#service").value),
+  barber_id:Number(document.querySelector("#barber").value),
+  customer_name:document.querySelector("#name").value.trim(),
+  customer_phone:document.querySelector("#phone").value.trim(),
+  date:document.querySelector("#date").value,
+  time:chosenTime
+ };
+ if(!payload.customer_name||!payload.customer_phone||!payload.date||!payload.time){
+  document.querySelector("#message").innerHTML='<div class="notice err">Preencha nome, WhatsApp, data e horário.</div>';
+  return;
+ }
+ if(isBooked(payload.barber_id,payload.date,payload.time)){
+  document.querySelector("#message").innerHTML='<div class="notice err">Esse horário acabou de ser reservado. Escolha outro horário.</div>';
+  chosenTime="";
+  await loadBookedAppointments();
+  return;
+ }
  if(API){
-  try{const r=await api("/api/appointments",{method:"POST",body:JSON.stringify(payload)});document.querySelector("#message").innerHTML=`<div class="notice ok">Agendamento confirmado! Código: <b>${esc(r.id)}</b></div>`;return}catch(e){document.querySelector("#message").innerHTML='<div class="notice err">Não foi possível salvar no servidor. Verifique a API.</div>';return}
+  try{
+   const r=await api("/api/appointments",{method:"POST",body:JSON.stringify(payload)});
+   bookedAppointments.push({...payload,id:r.id,status:"Pendente"});
+   chosenTime="";
+   renderSlots();
+   document.querySelector("#message").innerHTML=`<div class="notice ok">Agendamento confirmado! Código: <b>${esc(r.id)}</b></div>`;
+   return;
+  }catch(e){
+   document.querySelector("#message").innerHTML='<div class="notice err">Não foi possível salvar no servidor. Verifique a API.</div>';
+   await loadBookedAppointments();
+   return;
+  }
  }
  const list=JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");
  list.push({...payload,id:Date.now(),created_at:new Date().toISOString(),status:"Pendente"});
  localStorage.setItem("studioAAAppointments",JSON.stringify(list));
- document.querySelector("#message").innerHTML='<div class="notice ok">Agendamento registrado neste dispositivo. Ao conectar a API, ele será salvo no banco e ficará disponível no painel.</div>';
+ bookedAppointments.push({...payload,id:Date.now(),status:"Pendente"});
+ chosenTime="";
+ renderSlots();
+ document.querySelector("#message").innerHTML='<div class="notice ok">Agendamento registrado neste dispositivo.</div>';
 }
+
 function openAdmin(){document.querySelector("#admin").style.display="block";document.querySelector("#admin").scrollIntoView({behavior:"smooth"})}
-function adminLogin(){const pass=document.querySelector("#adminPass").value;if(pass==="studioaa123"){document.querySelector("#loginBox").style.display="none";document.querySelector("#dashboard").style.display="block";loadDashboard()}else alert("Senha incorreta.")}
-function loadDashboard(){const list=JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");document.querySelector("#sToday").textContent=list.length;document.querySelector("#sClients").textContent=new Set(list.map(x=>x.customer_phone)).size;document.querySelector("#sBarbers").textContent=barbers.length;document.querySelector("#sServices").textContent=services.length;document.querySelector("#appointments").innerHTML=list.length?list.map(a=>`<div class="item"><span><strong>${esc(a.customer_name)}</strong><span class="muted">${esc(a.date)} • ${esc(a.time)} • ${esc(a.customer_phone)}</span></span><span class="price">${esc(a.status)}</span></div>`).join(""):'<div class="item"><span class="muted">Nenhum agendamento neste dispositivo.</span></div>'}
+
+function adminLogin(){
+ const pass=document.querySelector("#adminPass").value;
+ if(pass==="studioaa123"){
+  document.querySelector("#loginBox").style.display="none";
+  document.querySelector("#dashboard").style.display="block";
+  loadDashboard();
+ }else alert("Senha incorreta.");
+}
+
+async function loadDashboard(){
+ try{
+  const data=API?await api("/api/admin/dashboard"):null;
+  const list=API?extractAppointments(data,[]):JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");
+  const today=new Date().toISOString().slice(0,10);
+  const todayList=list.filter(a=>String(a.date||"").slice(0,10)===today);
+  document.querySelector("#sToday").textContent=todayList.length;
+  document.querySelector("#sClients").textContent=new Set(list.map(x=>x.customer_phone).filter(Boolean)).size;
+  document.querySelector("#sBarbers").textContent=barbers.length;
+  document.querySelector("#sServices").textContent=services.length;
+  document.querySelector("#appointments").innerHTML=list.length?
+   list.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time))).map(a=>`<div class="item"><span><strong>${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")}${a.barber_name?" • "+esc(typeof a.barber_name==="object"?a.barber_name.name:a.barber_name):""}</span></span><span class="price">${esc(a.status||"Pendente")}</span></div>`).join(""):
+   '<div class="item"><span class="muted">Nenhum agendamento encontrado.</span></div>';
+ }catch(e){
+  document.querySelector("#appointments").innerHTML='<div class="item"><span class="muted">Não foi possível carregar os agendamentos do servidor.</span></div>';
+ }
+}
+
 function adminLogout(){document.querySelector("#dashboard").style.display="none";document.querySelector("#loginBox").style.display="block";document.querySelector("#adminPass").value=""}
 document.querySelector("#date").min=new Date().toISOString().slice(0,10);
+document.querySelector("#date").addEventListener("change",()=>{chosenTime="";loadBookedAppointments()});
+document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";renderSlots()});
 render();loadApi();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script>
