@@ -178,7 +178,6 @@ try {
     }
 
     if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='POST'){
-        checkAdmin();
         $x=body(); $id=(int)($x['barber_id']??0);
         if(!$id)out(['error'=>'Barbeiro inválido.'],422);
         $items=$x['schedule'] ?? [];
