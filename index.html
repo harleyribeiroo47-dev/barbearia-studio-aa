@@ -64,7 +64,7 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
   <div id="loginBox">
     <div class="formgrid"><div class="field"><label>E-mail</label><input id="adminEmail" value="admin@studioaa.com"></div><div class="field"><label>Senha</label><input id="adminPass" type="password" placeholder="Senha"></div></div>
     <button class="btn primary" onclick="adminLogin()">ENTRAR</button>
-    <div class="notice">O painel abaixo é preparado para a API PHP/MySQL. Nesta versão, a tela pública funciona imediatamente; depois de conectar a API, os dados passam a ser persistidos no banco.</div>
+    <div class="notice">Painel conectado ao banco de dados. Entre com a senha administrativa para visualizar e gerenciar os agendamentos.</div>
   </div>
   <div id="dashboard" style="display:none">
     <div class="stats"><div class="stat">Hoje<b id="sToday">0</b><span class="muted">atendimentos</span></div><div class="stat">Clientes<b id="sClients">0</b><span class="muted">cadastrados</span></div><div class="stat">Barbeiros<b id="sBarbers">0</b><span class="muted">ativos</span></div><div class="stat">Serviços<b id="sServices">0</b><span class="muted">disponíveis</span></div></div>
@@ -102,6 +102,7 @@ function render(){
  renderSlots();
 }
 let bookedAppointments=[];
+let adminPassword="";
 
 function normalizeAppointment(a){
  return {
@@ -163,20 +164,25 @@ function showBooking(){
 
 function hideBooking(){document.querySelector("#booking").style.display="none"}
 
-async function api(path,options){
- const r=await fetch(API+path,{headers:{"Content-Type":"application/json"},...options});
- if(!r.ok)throw new Error(await r.text());
+async function api(path,options={}){
+ const headers={"Content-Type":"application/json",...(options.headers||{})};
+ const r=await fetch(API+path,{...options,headers});
+ if(!r.ok)throw new Error(`${r.status} ${await r.text()}`);
  return r.json();
 }
 
 async function loadBookedAppointments(){
- if(!API)return;
+ const date=document.querySelector("#date").value;
+ const barberId=document.querySelector("#barber").value;
+ if(!API||!date||!barberId){bookedAppointments=[];renderSlots();return;}
  try{
-  const data=await api("/api/admin/dashboard");
-  bookedAppointments=extractAppointments(data,[]);
+  const data=await api(`/api/availability?barber_id=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`);
+  bookedAppointments=Array.isArray(data.appointments)?data.appointments.map(normalizeAppointment):[];
   renderSlots();
  }catch(e){
-  console.warn("Não foi possível consultar os agendamentos para bloquear horários.",e);
+  console.warn("Não foi possível consultar a disponibilidade.",e);
+  bookedAppointments=[];
+  renderSlots();
  }
 }
 
@@ -236,34 +242,61 @@ async function confirmBooking(){
 
 function openAdmin(){document.querySelector("#admin").style.display="block";document.querySelector("#admin").scrollIntoView({behavior:"smooth"})}
 
-function adminLogin(){
+async function adminLogin(){
  const pass=document.querySelector("#adminPass").value;
- if(pass==="studioaa123"){
+ if(!pass){alert("Digite a senha administrativa.");return;}
+ try{
+  await api("/api/admin/login",{method:"POST",body:JSON.stringify({password:pass})});
+  adminPassword=pass;
   document.querySelector("#loginBox").style.display="none";
   document.querySelector("#dashboard").style.display="block";
-  loadDashboard();
- }else alert("Senha incorreta.");
+  await loadDashboard();
+ }catch(e){
+  adminPassword="";
+  alert("Senha incorreta ou API indisponível.");
+ }
 }
 
 async function loadDashboard(){
  try{
-  const data=API?await api("/api/admin/dashboard"):null;
-  const list=API?extractAppointments(data,[]):JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");
-  const today=new Date().toISOString().slice(0,10);
-  const todayList=list.filter(a=>String(a.date||"").slice(0,10)===today);
-  document.querySelector("#sToday").textContent=todayList.length;
-  document.querySelector("#sClients").textContent=new Set(list.map(x=>x.customer_phone).filter(Boolean)).size;
-  document.querySelector("#sBarbers").textContent=barbers.length;
-  document.querySelector("#sServices").textContent=services.length;
+  const data=await api("/api/admin/dashboard",{headers:{"X-Admin-Password":adminPassword}});
+  const list=Array.isArray(data.appointments)?data.appointments:[];
+  const stats=data.stats||{};
+  document.querySelector("#sToday").textContent=Number(stats.today||0);
+  document.querySelector("#sClients").textContent=Number(stats.clients||0);
+  document.querySelector("#sBarbers").textContent=Number(stats.barbers||0);
+  document.querySelector("#sServices").textContent=Number(stats.services||0);
   document.querySelector("#appointments").innerHTML=list.length?
-   list.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.time).localeCompare(String(b.time))).map(a=>`<div class="item"><span><strong>${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")}${a.barber_name?" • "+esc(typeof a.barber_name==="object"?a.barber_name.name:a.barber_name):""}</span></span><span class="price">${esc(a.status||"Pendente")}</span></div>`).join(""):
+   list.map(a=>{
+    const status=String(a.status||"pending");
+    const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído",cancelled:"Cancelado"}[status]||status;
+    const cancelled=status==="cancelled";
+    return `<div class="item"><span><strong>#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")}</span></span><span style="display:flex;align-items:center;gap:8px"><span class="price">${esc(label)}</span>${cancelled?"":`<button class="btn danger" style="padding:8px 10px" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`}</span></div>`;
+   }).join(""):
    '<div class="item"><span class="muted">Nenhum agendamento encontrado.</span></div>';
  }catch(e){
+  if(e.message.includes("401")){adminLogout();alert("Sua sessão administrativa expirou. Entre novamente.");return;}
   document.querySelector("#appointments").innerHTML='<div class="item"><span class="muted">Não foi possível carregar os agendamentos do servidor.</span></div>';
  }
 }
 
-function adminLogout(){document.querySelector("#dashboard").style.display="none";document.querySelector("#loginBox").style.display="block";document.querySelector("#adminPass").value=""}
+async function cancelAppointment(id){
+ if(!adminPassword)return;
+ if(!confirm(`Cancelar o agendamento #${id}?`))return;
+ try{
+  await api("/api/admin/cancel",{method:"POST",headers:{"X-Admin-Password":adminPassword},body:JSON.stringify({id})});
+  await loadDashboard();
+  await loadBookedAppointments();
+ }catch(e){alert("Não foi possível cancelar o agendamento.");}
+}
+
+function adminLogout(){
+ adminPassword="";
+ document.querySelector("#dashboard").style.display="none";
+ document.querySelector("#loginBox").style.display="block";
+ document.querySelector("#adminPass").value="";
+}
+
 document.querySelector("#date").min=new Date().toISOString().slice(0,10);
 document.querySelector("#date").addEventListener("change",()=>{chosenTime="";loadBookedAppointments()});
 document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";renderSlots()});
