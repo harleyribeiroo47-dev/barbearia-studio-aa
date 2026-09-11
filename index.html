@@ -1,366 +1,65 @@
 <!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Studio A.A">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-180.png">
+<html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png">
 <title>BARBEARIA STUDIO A.A</title>
 <style>
-:root{--bg:#070707;--panel:#111;--panel2:#171717;--line:#2b2415;--gold:#d6a82e;--gold2:#f0c85a;--txt:#f6f1e6;--muted:#a9a39a;--ok:#58c47a;--danger:#ef6b6b}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 50% -10%,#302716 0,#0b0b0b 38%,#050505 100%);color:var(--txt);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-header{position:sticky;top:0;z-index:20;background:#080808e8;border-bottom:1px solid #201b12;backdrop-filter:blur(16px)}
-.nav{max-width:1100px;margin:auto;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand{display:flex;align-items:center;gap:9px;font-weight:900;letter-spacing:1.5px;font-size:14px}.brand img{width:34px;height:34px;border-radius:9px}
-.nav button{width:auto;margin:0;padding:9px 13px;background:#181818;color:#fff;border:1px solid #3a311e}
-main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:stretch}
-.card{background:linear-gradient(145deg,#151515,#0e0e0e);border:1px solid var(--line);border-radius:24px;box-shadow:0 18px 60px #0008;overflow:hidden}
-.heroMedia{min-height:390px;height:390px;background:#0e0e0e;display:flex;align-items:center;justify-content:center;padding:28px}.heroMedia img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
-.heroCopy{padding:34px;display:flex;flex-direction:column;justify-content:center}.eyebrow{color:var(--gold);font-size:12px;font-weight:900;letter-spacing:2px}.hero h1{font-size:clamp(38px,6vw,68px);line-height:.98;margin:12px 0}.hero p{color:var(--muted);font-size:17px;line-height:1.6}.gold{color:var(--gold)}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{border:1px solid #493b1c;background:#191919;color:#fff;border-radius:13px;padding:13px 17px;font-weight:900;cursor:pointer}.btn.primary{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#111;border-color:var(--gold);box-shadow:0 8px 24px #d6a82e33}.btn.danger{border-color:#5a2424;color:#ffb0b0}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.section{margin-top:22px}.sectionTitle{font-size:12px;color:var(--gold);font-weight:900;letter-spacing:2px;margin:0 0 10px}
-.item{padding:17px;border-top:1px solid #272727;display:flex;justify-content:space-between;gap:12px;align-items:center}.item:first-child{border-top:0}.item strong{display:block}.muted{color:var(--muted);font-size:13px}.price{color:var(--gold2);font-weight:900;white-space:nowrap}
-.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#2a2418;border:1px solid #5b471f;color:var(--gold2);font-weight:900}
-.barber{display:flex;gap:12px;align-items:center}.rating{color:#f0c85a;font-size:13px}
-.booking{display:none;margin-top:22px;padding:24px}.steps{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}.step{padding:8px 10px;border:1px solid #373737;border-radius:99px;color:#777;font-size:12px;font-weight:800}.step.active{border-color:var(--gold);color:var(--gold)}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;color:#bdb7ad;font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}.slot{background:#1d1d1d;color:#fff;border:1px solid #393939;border-radius:10px;padding:11px;cursor:pointer}.slot.active{background:var(--gold);color:#111;border-color:var(--gold)}.slot.disabled{background:#0d0d0d;color:#666;border-color:#252525;cursor:not-allowed;text-decoration:line-through;opacity:.75}
+:root{--gold:#d6a82e;--gold2:#f0c85a;--txt:#f6f1e6;--muted:#aaa;--ok:#58c47a;--danger:#ef6b6b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -10%,#302716 0,#0b0b0b 38%,#050505 100%);color:var(--txt);font-family:Inter,Arial,sans-serif}
+header{position:sticky;top:0;z-index:20;background:#080808ed;border-bottom:1px solid #201b12}.nav{max-width:1100px;margin:auto;padding:13px 18px;display:flex;justify-content:space-between;align-items:center}.brand{display:flex;gap:9px;align-items:center;font-weight:900;letter-spacing:1.5px}.brand img{width:34px;height:34px;border-radius:9px}.gold,.sectionTitle{color:var(--gold)}
+main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.card{background:linear-gradient(145deg,#151515,#0e0e0e);border:1px solid #2b2415;border-radius:24px;box-shadow:0 18px 60px #0008;overflow:hidden}.heroMedia{height:390px;display:flex;align-items:center;justify-content:center;padding:28px}.heroMedia img{width:100%;height:100%;object-fit:contain}.heroCopy{padding:34px;display:flex;flex-direction:column;justify-content:center}.eyebrow,.sectionTitle{font-size:12px;font-weight:900;letter-spacing:2px}.hero h1{font-size:clamp(38px,6vw,68px);line-height:.98;margin:12px 0}.hero p{color:var(--muted);font-size:17px;line-height:1.6}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{border:1px solid #493b1c;background:#191919;color:#fff;border-radius:13px;padding:11px 15px;font-weight:900;cursor:pointer}.btn.primary{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#111}.btn.danger{border-color:#5a2424;color:#ffb0b0}.btn.ok{border-color:#245a34;color:#bde8c7}
+.section{margin-top:22px}.sectionTitle{margin-bottom:10px}.item{padding:17px;border-top:1px solid #272727;display:flex;justify-content:space-between;gap:12px;align-items:center}.item:first-child{border-top:0}.item strong{display:block}.muted{color:var(--muted);font-size:13px}.price{color:var(--gold2);font-weight:900}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.barber{display:flex;gap:12px;align-items:center;padding:16px}.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#2a2418;border:1px solid #5b471f;color:var(--gold2);font-weight:900}.rating{color:var(--gold2);font-size:13px}
+.booking,.admin{display:none;margin-top:22px;padding:24px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field label{display:block;color:#bdb7ad;font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:12px;padding:12px}.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}.slot{background:#1d1d1d;color:#fff;border:1px solid #393939;border-radius:10px;padding:11px;cursor:pointer}.slot.active{background:var(--gold);color:#111}.slot.disabled{opacity:.3;cursor:not-allowed;text-decoration:line-through}
 .notice{margin-top:12px;padding:12px;border-radius:12px;background:#151515;border:1px solid #2b2b2b;color:#aaa;font-size:13px}.notice.ok{border-color:#245a34;color:#bde8c7}.notice.err{border-color:#642b2b;color:#ffc0c0}
-.admin{display:none;margin-top:22px;padding:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}.table .item{background:#111}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
-@media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:300px;height:300px;padding:20px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
-.agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.agendaActions .btn{padding:7px 9px;font-size:10px}.btn.confirm{border-color:#245b36;color:#7ee787}.btn.complete{border-color:#24506b;color:#7dd3fc}.btn.reactivate{border-color:#6b531d;color:#f0c85a}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
-</style>
-</head>
-<body>
-<header><div class="nav"><div class="brand"><img src="logo-site.png" alt=""><span><span class="gold">BARBEARIA</span> STUDIO A.A</span></div><button class="btn" onclick="openAdmin()">PAINEL</button></div></header>
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}
+.manage{margin-top:18px;border:1px solid #3a301b;border-radius:18px;padding:18px;background:#0d0d0d}.manage h3{margin:0 0 14px;color:var(--gold);font-size:14px}.manageGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.manageBox{border:1px solid #2b2b2b;border-radius:14px;padding:14px;background:#121212;margin-bottom:10px}.manageRow{display:grid;grid-template-columns:1.2fr .7fr 1.2fr;gap:8px;margin-bottom:8px}.manageRow input{min-width:0}.toggle{display:flex;gap:8px;align-items:center;color:#bbb;font-size:12px;margin:8px 0}.dayrow{display:grid;grid-template-columns:90px 75px 1fr 1fr 1fr 1fr;gap:7px;align-items:center;margin:6px 0}.dayrow input{padding:8px;background:#090909;color:#fff;border:1px solid #333;border-radius:8px}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
+@media(max-width:780px){.hero,.manageGrid{grid-template-columns:1fr}.heroMedia{height:300px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.manageRow,.dayrow{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<header><div class="nav"><div class="brand"><img src="logo-site.png"><span><span class="gold">BARBEARIA</span> STUDIO A.A</span></div><button class="btn" onclick="openAdmin()">PAINEL</button></div></header>
 <main>
-<section class="hero card">
-  <div class="heroMedia"><img src="logo-site.png" alt="BARBEARIA STUDIO A.A"></div>
-  <div class="heroCopy"><div class="eyebrow">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário. Seu atendimento começa com um agendamento simples e profissional.</p><div class="actions"><button class="btn primary" onclick="showBooking()">AGENDAR AGORA</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div>
-</section>
-
+<section class="hero card"><div class="heroMedia"><img src="logo-site.png" alt="BARBEARIA STUDIO A.A"></div><div class="heroCopy"><div class="eyebrow gold">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário.</p><div class="actions"><button class="btn primary" onclick="showBooking()">AGENDAR AGORA</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div></section>
 <section id="services" class="section"><div class="sectionTitle">SERVIÇOS</div><div class="card" id="serviceList"></div></section>
 <section class="section"><div class="sectionTitle">NOSSOS BARBEIROS</div><div class="grid" id="barberList"></div></section>
-
-<section id="booking" class="booking card">
-  <div class="sectionTitle">AGENDAR HORÁRIO</div>
-  <div class="steps"><span class="step active">1 Serviço</span><span class="step active">2 Barbeiro</span><span class="step active">3 Data</span><span class="step active">4 Horário</span></div>
-  <div class="formgrid">
-    <div class="field"><label>Serviço</label><select id="service"></select></div>
-    <div class="field"><label>Barbeiro</label><select id="barber"></select></div>
-    <div class="field"><label>Seu nome</label><input id="name" placeholder="Nome completo"></div>
-    <div class="field"><label>WhatsApp</label><input id="phone" placeholder="(13) 99999-9999" inputmode="tel"></div>
-    <div class="field"><label>Data</label><input id="date" type="date"></div>
-  </div>
-  <div class="field" style="margin-top:13px"><label>Horário disponível</label><div class="slots" id="slots"></div></div>
-  <div class="actions"><button class="btn primary" onclick="confirmBooking()">CONFIRMAR AGENDAMENTO</button><button class="btn" onclick="hideBooking()">FECHAR</button></div>
-  <div id="message"></div>
-</section>
-
-<section id="admin" class="admin card">
-  <div class="sectionTitle">PAINEL ADMINISTRATIVO</div>
-  <div id="loginBox">
-    <div class="formgrid"><div class="field"><label>E-mail</label><input id="adminEmail" value="admin@studioaa.com"></div><div class="field"><label>Senha</label><input id="adminPass" type="password" placeholder="Senha"></div></div>
-    <button class="btn primary" onclick="adminLogin()">ENTRAR</button>
-    <div class="notice">Painel conectado ao banco de dados. Entre com a senha administrativa para visualizar e gerenciar os agendamentos.</div>
-  </div>
-  <div id="dashboard" style="display:none">
-    <div class="stats"><div class="stat">Hoje<b id="sToday">0</b><span class="muted">atendimentos</span></div><div class="stat">Clientes<b id="sClients">0</b><span class="muted">cadastrados</span></div><div class="stat">Barbeiros<b id="sBarbers">0</b><span class="muted">ativos</span></div><div class="stat">Serviços<b id="sServices">0</b><span class="muted">disponíveis</span></div></div>
-    <div class="sectionTitle" style="margin-top:20px">AGENDA DO DIA</div>
-    <div class="agendaTools">
-      <div class="field"><label>Data da agenda</label><input id="agendaDate" type="date"></div>
-      <div class="field"><label>Barbeiro</label><select id="agendaBarber"><option value="">Todos os barbeiros</option></select></div>
-      <button class="btn" type="button" onclick="renderAgenda()">ATUALIZAR</button>
-    </div>
-    <div class="agenda" id="agenda"></div>
-    <div class="sectionTitle" style="margin-top:20px">TODOS OS AGENDAMENTOS</div>
-    <div class="table" id="appointments"></div>
-    <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div>
-  </div>
-</section>
-<div class="footer">BARBEARIA STUDIO A.A • ESTILO • RESPEITO • ATITUDE</div>
-</main>
+<section id="booking" class="booking card"><div class="sectionTitle">AGENDAR HORÁRIO</div><div class="formgrid"><div class="field"><label>Serviço</label><select id="service"></select></div><div class="field"><label>Barbeiro</label><select id="barber"></select></div><div class="field"><label>Seu nome</label><input id="name"></div><div class="field"><label>WhatsApp</label><input id="phone" inputmode="tel"></div><div class="field"><label>Data</label><input id="date" type="date"></div></div><div class="field" style="margin-top:13px"><label>Horário disponível</label><div class="slots" id="slots"></div></div><div class="actions"><button class="btn primary" onclick="confirmBooking()">CONFIRMAR AGENDAMENTO</button><button class="btn" onclick="hideBooking()">FECHAR</button></div><div id="message"></div></section>
+<section id="admin" class="admin card"><div class="sectionTitle">PAINEL ADMINISTRATIVO</div>
+<div id="loginBox"><div class="formgrid"><div class="field"><label>E-mail</label><input id="adminEmail" value="admin@studioaa.com"></div><div class="field"><label>Senha</label><input id="adminPass" type="password"></div></div><button class="btn primary" onclick="adminLogin()">ENTRAR</button></div>
+<div id="dashboard" style="display:none">
+<div class="stats"><div class="stat">Hoje<b id="sToday">0</b><span class="muted">atendimentos</span></div><div class="stat">Clientes<b id="sClients">0</b><span class="muted">cadastrados</span></div><div class="stat">Barbeiros<b id="sBarbers">0</b><span class="muted">ativos</span></div><div class="stat">Serviços<b id="sServices">0</b><span class="muted">disponíveis</span></div></div>
+<div class="manage"><h3>⚙️ GERENCIAR BARBEIROS, CORTES, VALORES E HORÁRIOS</h3>
+<div class="manageGrid"><div class="manageBox"><h3>💈 BARBEIROS</h3><div id="barberAdmin"></div><button class="btn small" onclick="addBarber()">+ NOVO BARBEIRO</button></div>
+<div class="manageBox"><h3>✂️ CORTES / SERVIÇOS</h3><div id="serviceAdmin"></div><button class="btn small" onclick="addService()">+ NOVO SERVIÇO</button></div></div>
+<div class="manageBox"><h3>🕐 HORÁRIOS</h3><div class="field"><label>Barbeiro</label><select id="scheduleBarber" onchange="loadScheduleEditor()"></select></div><div id="scheduleAdmin"></div><button class="btn primary" onclick="saveSchedule()">SALVAR HORÁRIOS</button><div id="manageMsg"></div></div>
+</div>
+<div class="sectionTitle" style="margin-top:22px">AGENDA DO DIA</div><div class="formgrid"><div class="field"><label>Data</label><input id="agendaDate" type="date"></div><div class="field"><label>Barbeiro</label><select id="agendaBarber"></select></div></div><div class="actions"><button class="btn" onclick="loadDashboard()">ATUALIZAR</button></div><div class="table" id="appointments"></div>
+<div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div></div></section>
+<div class="footer">BARBEARIA STUDIO A.A • ESTILO • RESPEITO • ATITUDE</div></main>
 <script>
-const API = "https://studio-aa-api.onrender.com";// Ex.: https://seu-backend.onrender.com
-const fallbackServices=[
- {id:1,name:"Corte Masculino",duration:30,price:35},
- {id:2,name:"Barba Tradicional",duration:20,price:25},
- {id:3,name:"Combo Corte + Barba",duration:50,price:55},
- {id:4,name:"Sobrancelha",duration:15,price:15},
- {id:5,name:"Pigmentação de Barba",duration:30,price:40}
-];
-const fallbackBarbers=[
- {id:1,name:"Lucas",specialty:"Especialista em degradê",rating:4.9},
- {id:2,name:"Rafael",specialty:"Barba e bigode",rating:4.8},
- {id:3,name:"Thiago",specialty:"Corte masculino",rating:4.7},
- {id:4,name:"Matheus",specialty:"Estilo clássico",rating:4.9}
-];
-const times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
-let services=[...fallbackServices], barbers=[...fallbackBarbers], chosenTime="";
-let adminPassword="", agendaAppointments=[];
-
-
-function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function render(){
- document.querySelector("#serviceList").innerHTML=services.map(s=>`<div class="item"><span><strong>${esc(s.name)}</strong><span class="muted">${s.duration} min</span></span><span class="price">${money(s.price)}</span></div>`).join("");
- document.querySelector("#barberList").innerHTML=barbers.map(b=>`<div class="card" style="padding:16px"><div class="barber"><div class="avatar">${esc(b.name[0])}</div><div><strong>${esc(b.name)}</strong><div class="muted">${esc(b.specialty||"Barbeiro")}</div><div class="rating">★ ${b.rating||"5.0"}</div></div></div></div>`).join("");
- document.querySelector("#service").innerHTML=services.map(s=>`<option value="${s.id}">${esc(s.name)} — ${money(s.price)}</option>`).join("");
- document.querySelector("#barber").innerHTML=barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
- renderSlots();
-}
-let bookedAppointments=[];
-
-function normalizeAppointment(a){
- return {
-  id:a?.id,
-  date:a?.date||a?.appointment_date||a?.booking_date||a?.data||a?.day,
-  time:a?.time||a?.appointment_time||a?.booking_time||a?.hora,
-  barber_id:a?.barber_id??a?.barberId??a?.barbeiro_id,
-  barber_name:a?.barber_name||a?.barber||a?.barbeiro,
-  customer_name:a?.customer_name||a?.name||a?.customer||a?.cliente_nome,
-  customer_phone:a?.customer_phone||a?.phone||a?.telefone||a?.cliente_telefone,
-  service_name:a?.service_name||a?.service||a?.servico_nome,
-  status:a?.status||"Pendente"
- };
-}
-
-function extractAppointments(value,out=[]){
- if(!value)return out;
- if(Array.isArray(value)){value.forEach(v=>extractAppointments(v,out));return out}
- if(typeof value==="object"){
-  const a=normalizeAppointment(value);
-  if(a.date&&a.time&&(a.barber_id!=null||a.barber_name||a.customer_name))out.push(a);
-  Object.values(value).forEach(v=>{if(v&&typeof v==="object")extractAppointments(v,out)});
- }
- return out;
-}
-
-function isBooked(barberId,date,time){
- return bookedAppointments.some(a=>{
-  const sameDate=String(a.date||"").slice(0,10)===String(date||"").slice(0,10);
-  const sameTime=String(a.time||"").slice(0,5)===String(time||"").slice(0,5);
-  const sameBarber=a.barber_id!=null ? Number(a.barber_id)===Number(barberId) : true;
-  const active=!["cancelado","cancelada","canceled","cancelled"].includes(String(a.status||"").toLowerCase());
-  return sameDate&&sameTime&&sameBarber&&active;
- });
-}
-
-function renderSlots(){
- const date=document.querySelector("#date").value;
- const barberId=document.querySelector("#barber").value;
- document.querySelector("#slots").innerHTML=times.map(t=>{
-  const busy=isBooked(barberId,date,t);
-  return `<button type="button" class="slot ${chosenTime===t&&!busy?"active":""} ${busy?"disabled":""}" ${busy?"disabled":""} title="${busy?"Horário já reservado":"Selecionar horário"}" onclick="${busy?"":"chooseTime('"+t+"')"}">${t}</button>`;
- }).join("");
- if(chosenTime&&isBooked(barberId,date,chosenTime))chosenTime="";
-}
-
-function chooseTime(t){
- if(isBooked(document.querySelector("#barber").value,document.querySelector("#date").value,t))return;
- chosenTime=t;
- renderSlots();
-}
-
-function showBooking(){
- document.querySelector("#booking").style.display="block";
- document.querySelector("#booking").scrollIntoView({behavior:"smooth"});
- if(!document.querySelector("#date").value)document.querySelector("#date").value=new Date().toISOString().slice(0,10);
- loadBookedAppointments();
-}
-
+const API="https://studio-aa-api.onrender.com",times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
+let services=[],barbers=[],chosenTime="",booked=[];
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+async function api(path,opt={}){const r=await fetch(API+path,{headers:{"Content-Type":"application/json",...(opt.headers||{})},...opt}),t=await r.text();let d;try{d=JSON.parse(t)}catch{d={error:t}}if(!r.ok)throw Error(d.error||t||"Erro");return d}
+function render(){document.querySelector("#serviceList").innerHTML=services.filter(s=>s.active!==false).map(s=>`<div class="item"><span><strong>${esc(s.name)}</strong><span class="muted">${s.duration} min</span></span><span class="price">${money(s.price)}</span></div>`).join("");document.querySelector("#barberList").innerHTML=barbers.filter(b=>b.active!==false).map(b=>`<div class="card barber"><div class="avatar">${esc((b.name||"B")[0])}</div><div><strong>${esc(b.name)}</strong><div class="muted">${esc(b.specialty||"Barbeiro")}</div><div class="rating">★ ${b.rating||5}</div></div></div>`).join("");document.querySelector("#service").innerHTML=services.filter(s=>s.active!==false).map(s=>`<option value="${s.id}">${esc(s.name)} — ${money(s.price)}</option>`).join("");document.querySelector("#barber").innerHTML=barbers.filter(b=>b.active!==false).map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");renderSlots()}
+function isBooked(t){const d=document.querySelector("#date").value,b=+document.querySelector("#barber").value;return booked.some(a=>String(a.date).slice(0,10)==d&&+a.barber_id===b&&a.time===t&&String(a.status).toLowerCase()!="cancelado")}
+function renderSlots(){document.querySelector("#slots").innerHTML=times.map(t=>{const dis=isBooked(t);return `<button type="button" class="slot ${chosenTime===t&&!dis?"active":""} ${dis?"disabled":""}" ${dis?"disabled":""} onclick="chooseTime('${t}')">${t}</button>`}).join("")}
+function chooseTime(t){if(!isBooked(t)){chosenTime=t;renderSlots()}}
+async function refreshAvailability(){chosenTime="";try{booked=await api(`/api/availability?barber_id=${+document.querySelector("#barber").value}&date=${document.querySelector("#date").value}`)}catch{booked=[]}renderSlots()}
+function showBooking(){document.querySelector("#booking").style.display="block";document.querySelector("#booking").scrollIntoView({behavior:"smooth"});if(!document.querySelector("#date").value)document.querySelector("#date").value=new Date().toISOString().slice(0,10);refreshAvailability()}
 function hideBooking(){document.querySelector("#booking").style.display="none"}
-
-async function api(path,options={}){
- const headers={"Content-Type":"application/json",...(options.headers||{})};
- const r=await fetch(API+path,{...options,headers});
- if(!r.ok)throw new Error(`${r.status} ${await r.text()}`);
- return r.json();
-}
-
-async function loadBookedAppointments(){
- const date=document.querySelector("#date").value;
- const barberId=document.querySelector("#barber").value;
- if(!API||!date||!barberId){bookedAppointments=[];renderSlots();return;}
- try{
-  const data=await api(`/api/availability?barber_id=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`);
-  bookedAppointments=Array.isArray(data.appointments)?data.appointments.map(normalizeAppointment):[];
-  renderSlots();
- }catch(e){
-  console.warn("Não foi possível consultar a disponibilidade.",e);
-  bookedAppointments=[];
-  renderSlots();
- }
-}
-
-async function loadApi(){
- if(!API)return;
- try{
-  services=await api("/api/services");
-  barbers=await api("/api/barbers");
-  render();
-  await loadBookedAppointments();
- }catch(e){
-  console.warn("API indisponível; usando dados locais.",e);
- }
-}
-
-async function confirmBooking(){
- const payload={
-  service_id:Number(document.querySelector("#service").value),
-  barber_id:Number(document.querySelector("#barber").value),
-  customer_name:document.querySelector("#name").value.trim(),
-  customer_phone:document.querySelector("#phone").value.trim(),
-  date:document.querySelector("#date").value,
-  time:chosenTime
- };
- if(!payload.customer_name||!payload.customer_phone||!payload.date||!payload.time){
-  document.querySelector("#message").innerHTML='<div class="notice err">Preencha nome, WhatsApp, data e horário.</div>';
-  return;
- }
- if(isBooked(payload.barber_id,payload.date,payload.time)){
-  document.querySelector("#message").innerHTML='<div class="notice err">Esse horário acabou de ser reservado. Escolha outro horário.</div>';
-  chosenTime="";
-  await loadBookedAppointments();
-  return;
- }
- if(API){
-  try{
-   const r=await api("/api/appointments",{method:"POST",body:JSON.stringify(payload)});
-   bookedAppointments.push({...payload,id:r.id,status:"Pendente"});
-   chosenTime="";
-   renderSlots();
-   document.querySelector("#message").innerHTML=`<div class="notice ok">Agendamento confirmado! Código: <b>${esc(r.id)}</b></div>`;
-   return;
-  }catch(e){
-   document.querySelector("#message").innerHTML='<div class="notice err">Não foi possível salvar no servidor. Verifique a API.</div>';
-   await loadBookedAppointments();
-   return;
-  }
- }
- const list=JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");
- list.push({...payload,id:Date.now(),created_at:new Date().toISOString(),status:"Pendente"});
- localStorage.setItem("studioAAAppointments",JSON.stringify(list));
- bookedAppointments.push({...payload,id:Date.now(),status:"Pendente"});
- chosenTime="";
- renderSlots();
- document.querySelector("#message").innerHTML='<div class="notice ok">Agendamento registrado neste dispositivo.</div>';
-}
-
-function openAdmin(){document.querySelector("#admin").style.display="block";document.querySelector("#admin").scrollIntoView({behavior:"smooth"})}
-
-async function adminLogin(){
- const pass=document.querySelector("#adminPass").value;
- if(!pass){alert("Digite a senha administrativa.");return;}
- try{
-  await api("/api/admin/login",{method:"POST",body:JSON.stringify({password:pass})});
-  adminPassword=pass;
-  document.querySelector("#loginBox").style.display="none";
-  document.querySelector("#dashboard").style.display="block";
-  await loadDashboard();
- }catch(e){
-  adminPassword="";
-  alert("Senha incorreta ou API indisponível.");
- }
-}
-
-async function loadDashboard(){
- try{
-  const data=await api("/api/admin/dashboard",{headers:{"X-Admin-Password":adminPassword}});
-  const list=Array.isArray(data.appointments)?data.appointments:[];
-  agendaAppointments=list;
-  const stats=data.stats||{};
-  document.querySelector("#sToday").textContent=Number(stats.today||0);
-  document.querySelector("#sClients").textContent=Number(stats.clients||0);
-  document.querySelector("#sBarbers").textContent=Number(stats.barbers||0);
-  document.querySelector("#sServices").textContent=Number(stats.services||0);
-  const ab=document.querySelector("#agendaBarber");
-  ab.innerHTML='<option value="">Todos os barbeiros</option>'+barbers.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("");
-  const ad=document.querySelector("#agendaDate");
-  if(!ad.value)ad.value=new Date().toISOString().slice(0,10);
-  renderAgenda();
-  document.querySelector("#appointments").innerHTML=list.length?
-   list.map(a=>{
-    const status=String(a.status||"pending").toLowerCase();
-    const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído",cancelled:"Cancelado"}[status]||status;
-    const cancelled=status==="cancelled";
-    return `<div class="item"><span><strong>#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")}</span></span><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="price">${esc(label)}</span>${statusActions(a)}</span></div>`;
-   }).join(""):
-   '<div class="item"><span class="muted">Nenhum agendamento encontrado.</span></div>';
- }catch(e){
-  if(e.message.includes("401")){adminLogout();alert("Sua sessão administrativa expirou. Entre novamente.");return;}
-  document.querySelector("#appointments").innerHTML='<div class="item"><span class="muted">Não foi possível carregar os agendamentos do servidor.</span></div>';
- }
-}
-
-function statusActions(a){
- const status=String(a.status||"pending").toLowerCase();
- if(status==="cancelled") return `<button class="btn reactivate" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'pending')">REATIVAR</button>`;
- if(status==="pending") return `<button class="btn confirm" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'confirmed')">CONFIRMAR</button><button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
- if(status==="confirmed") return `<button class="btn complete" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'completed')">CONCLUÍDO</button><button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
- if(status==="completed") return `<span class="muted">Atendimento finalizado</span>`;
- return `<button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
-}
-
-async function changeAppointmentStatus(id,status){
- if(!adminPassword)return;
- const labels={confirmed:"confirmar",completed:"marcar como concluído",pending:"reativar"};
- if(!confirm(`Deseja ${labels[status]||"alterar o status de"} o agendamento #${id}?`))return;
- try{
-  await api("/api/admin/status",{method:"POST",headers:{"X-Admin-Password":adminPassword},body:JSON.stringify({id,status})});
-  await loadDashboard();
-  await loadBookedAppointments();
- }catch(e){alert("Não foi possível alterar o status do agendamento.");}
-}
-
-function renderAgenda(){
- const box=document.querySelector("#agenda");
- if(!box)return;
- const date=document.querySelector("#agendaDate").value;
- const barberId=document.querySelector("#agendaBarber").value;
- const active=agendaAppointments.filter(a=>{
-  const status=String(a.status||"pending").toLowerCase();
-  const sameDate=String(a.date||"").slice(0,10)===String(date||"").slice(0,10);
-  const sameBarber=!barberId || Number(a.barber_id)===Number(barberId);
-  return sameDate && sameBarber && status!=="cancelled";
- });
- const byTime={};
- active.forEach(a=>{const t=String(a.time||"").slice(0,5);if(t)byTime[t]=a});
- const labelDate=date?new Date(date+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}):"Escolha uma data";
- const slots=times.map(t=>{
-  const a=byTime[t];
-  if(!a)return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaFree">Horário livre</div></div></div>`;
-  const status=String(a.status||"pending").toLowerCase();
-  const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído"}[status]||status;
-  return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaClient">#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</div><div class="agendaMeta">${esc(a.service_name||"Serviço")} • ${esc(a.barber_name||"Barbeiro")}</div><div class="agendaMeta">${esc(a.customer_phone||"")}</div><span class="status ${esc(status)}">${esc(label)}</span><div class="agendaActions">${statusActions(a)}</div></div></div>`;
- }).join("");
- box.innerHTML=`<div class="agendaHeader"><span class="agendaDay">${esc(labelDate)}</span><span class="muted">${active.length} atendimento(s)</span></div><div class="agendaGrid">${slots}</div>`;
-}
-async function cancelAppointment(id){
- if(!adminPassword)return;
- if(!confirm(`Cancelar o agendamento #${id}?`))return;
- try{
-  await api("/api/admin/cancel",{method:"POST",headers:{"X-Admin-Password":adminPassword},body:JSON.stringify({id})});
-  await loadDashboard();
-  await loadBookedAppointments();
- }catch(e){alert("Não foi possível cancelar o agendamento.");}
-}
-
-function adminLogout(){
- adminPassword="";
- document.querySelector("#dashboard").style.display="none";
- document.querySelector("#loginBox").style.display="block";
- document.querySelector("#adminPass").value="";
-}
-
-document.querySelector("#date").min=new Date().toISOString().slice(0,10);
-document.querySelector("#date").addEventListener("change",()=>{chosenTime="";loadBookedAppointments()});
-document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";renderSlots()});
-render();loadApi();
-if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
-</script>
-</body>
-</html>
+async function confirmBooking(){const p={service_id:+service.value,barber_id:+barber.value,customer_name:name.value.trim(),customer_phone:phone.value.trim(),date:date.value,time:chosenTime};if(!p.customer_name||!p.customer_phone||!p.date||!p.time)return message.innerHTML='<div class="notice err">Preencha todos os campos.</div>';if(isBooked(p.time))return message.innerHTML='<div class="notice err">Horário ocupado.</div>';try{const r=await api("/api/appointments",{method:"POST",body:JSON.stringify(p)});message.innerHTML=`<div class="notice ok">Agendamento confirmado! Código: <b>${esc(r.id)}</b></div>`;refreshAvailability()}catch(e){message.innerHTML=`<div class="notice err">${esc(e.message)}</div>`}}
+function openAdmin(){admin.style.display="block";admin.scrollIntoView({behavior:"smooth"})}
+function adminLogin(){if(adminPass.value==="studioaa123"){loginBox.style.display="none";dashboard.style.display="block";agendaDate.value=new Date().toISOString().slice(0,10);loadManagement();loadDashboard()}else alert("Senha incorreta.")}
+function adminLogout(){dashboard.style.display="none";loginBox.style.display="block";adminPass.value=""}
+async function loadDashboard(){try{const d=await api("/api/admin/dashboard");sToday.textContent=d.today??0;sClients.textContent=d.clients??0;sBarbers.textContent=d.barbers??0;sServices.textContent=d.services??0;let list=(d.appointments||[]).filter(a=>String(a.date).slice(0,10)==agendaDate.value&&(!agendaBarber.value||String(a.barber_id)==agendaBarber.value));appointments.innerHTML=list.length?list.map(a=>`<div class="item"><span><strong>#${a.id} — ${esc(a.customer_name)}</strong><span class="muted">${esc(a.time)} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")} • ${esc(a.customer_phone||"")}</span></span><span><b>${esc(a.status)}</b> ${String(a.status).toLowerCase()!="cancelado"?`<button class="btn small danger" onclick="cancelAppointment(${a.id})">CANCELAR</button>`:""}</span></div>`).join(""):'<div class="item"><span class="muted">Nenhum agendamento.</span></div>'}catch(e){appointments.innerHTML='<div class="item"><span class="muted">Erro ao carregar agenda.</span></div>'}}
+async function cancelAppointment(id){if(!confirm("Cancelar este agendamento?"))return;try{await api("/api/appointments/"+id,{method:"PATCH",body:JSON.stringify({status:"Cancelado"})});loadDashboard();refreshAvailability()}catch(e){alert(e.message)}}
+function loadManagement(){renderBarberAdmin();renderServiceAdmin();scheduleBarber.innerHTML=barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");agendaBarber.innerHTML='<option value="">Todos os barbeiros</option>'+barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");loadScheduleEditor()}
+function renderBarberAdmin(){barberAdmin.innerHTML=barbers.map(b=>`<div class="manageBox"><div class="manageRow"><input id="bn${b.id}" value="${esc(b.name)}"><input id="br${b.id}" type="number" step=".1" min="0" max="5" value="${b.rating??5}"><input id="bs${b.id}" value="${esc(b.specialty||"")}"></div><label class="toggle"><input id="ba${b.id}" type="checkbox" ${b.active!==false?"checked":""}> Ativo</label><button class="btn primary" onclick="saveBarber(${b.id})">SALVAR</button></div>`).join("")}
+function renderServiceAdmin(){serviceAdmin.innerHTML=services.map(s=>`<div class="manageBox"><div class="manageRow"><input id="sn${s.id}" value="${esc(s.name)}"><input id="sp${s.id}" type="number" step=".01" min="0" value="${s.price}"><input id="sd${s.id}" type="number" min="5" value="${s.duration}"></div><label class="toggle"><input id="sa${s.id}" type="checkbox" ${s.active!==false?"checked":""}> Disponível</label><button class="btn primary" onclick="saveService(${s.id})">SALVAR</button></div>`).join("")}
+async function saveBarber(id){try{await api("/api/barbers/"+id,{method:"PUT",body:JSON.stringify({name:document.querySelector("#bn"+id).value,specialty:document.querySelector("#bs"+id).value,rating:+document.querySelector("#br"+id).value,active:document.querySelector("#ba"+id).checked})});barbers=await api("/api/barbers");render();loadManagement();manageMsg.innerHTML='<div class="notice ok">Barbeiro salvo.</div>'}catch(e){manageMsg.innerHTML=`<div class="notice err">${esc(e.message)}</div>`}}
+async function saveService(id){try{await api("/api/services/"+id,{method:"PUT",body:JSON.stringify({name:document.querySelector("#sn"+id).value,price:+document.querySelector("#sp"+id).value,duration:+document.querySelector("#sd"+id).value,active:document.querySelector("#sa"+id).checked})});services=await api("/api/services");render();loadManagement();manageMsg.innerHTML='<div class="notice ok">Serviço salvo.</div>'}catch(e){manageMsg.innerHTML=`<div class="notice err">${esc(e.message)}</div>`}}
+async function addBarber(){const n=prompt("Nome do barbeiro:");if(!n)return;try{await api("/api/barbers",{method:"POST",body:JSON.stringify({name:n,specialty:"",rating:5,active:true})});barbers=await api("/api/barbers");render();loadManagement()}catch(e){alert(e.message)}}
+async function addService(){const n=prompt("Nome do corte/serviço:");if(!n)return;const p=prompt("Valor:","35");if(p===null)return;const d=prompt("Duração em minutos:","30");if(d===null)return;try{await api("/api/services",{method:"POST",body:JSON.stringify({name:n,price:+p,duration:+d,active:true})});services=await api("/api/services");render();loadManagement()}catch(e){alert(e.message)}}
+async function loadScheduleEditor(){try{const rows=await api("/api/schedules?barber_id="+scheduleBarber.value),days=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];scheduleAdmin.innerHTML=days.map((d,i)=>{const r=rows.find(x=>+x.day_of_week===i)||{active:i>0&&i<6,start_time:"09:00",end_time:"18:00",break_start:"12:30",break_end:"14:00"};return `<div class="dayrow"><b>${d}</b><label><input id="act${i}" type="checkbox" ${r.active?"checked":""}> aberto</label><input id="st${i}" type="time" value="${r.start_time||"09:00"}"><input id="en${i}" type="time" value="${r.end_time||"18:00"}"><input id="bs${i}" type="time" value="${r.break_start||""}"><input id="be${i}" type="time" value="${r.break_end||""}"></div>`}).join("")}catch(e){scheduleAdmin.innerHTML='<div class="notice err">Não foi possível carregar horários.</div>'}}
+async function saveSchedule(){const rows=[];for(let i=0;i<7;i++)rows.push({day_of_week:i,active:document.querySelector("#act"+i).checked,start_time:document.querySelector("#st"+i).value,end_time:document.querySelector("#en"+i).value,break_start:document.querySelector("#bs"+i).value,break_end:document.querySelector("#be"+i).value});try{await api("/api/schedules",{method:"PUT",body:JSON.stringify({barber_id:+scheduleBarber.value,schedules:rows})});manageMsg.innerHTML='<div class="notice ok">Horários salvos.</div>'}catch(e){manageMsg.innerHTML=`<div class="notice err">${esc(e.message)}</div>`}}
+date.min=new Date().toISOString().slice(0,10);date.addEventListener("change",refreshAvailability);barber.addEventListener("change",refreshAvailability);agendaDate.addEventListener("change",loadDashboard);agendaBarber.addEventListener("change",loadDashboard);
+async function boot(){try{services=await api("/api/services");barbers=await api("/api/barbers")}catch{services=[{id:1,name:"Corte Masculino",duration:30,price:35,active:true}];barbers=[{id:1,name:"Lucas",specialty:"Especialista em degradê",rating:4.9,active:true}]}render()}boot();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+</script></body></html>
