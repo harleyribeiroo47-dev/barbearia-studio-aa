@@ -223,7 +223,7 @@ try {
     if ($path === '/api/admin/dashboard' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         requireAdmin();
         $pdo = db();
-        $appointments = $pdo->query("SELECT a.id,
+        $appointments = $pdo->query("SELECT a.id, a.barber_id, a.service_id, s.price AS service_price,
                     TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,
                     TO_CHAR(a.appointment_time,'HH24:MI') AS time,
                     a.status, c.name AS customer_name, c.phone AS customer_phone,
@@ -244,6 +244,20 @@ try {
         ]);
     }
 
+    if ($path === '/api/admin/status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        requireAdmin();
+        $d = body();
+        $id = (int)($d['id'] ?? 0);
+        $status = (string)($d['status'] ?? '');
+        $allowed = ['pending','confirmed','completed','cancelled'];
+        if ($id <= 0 || !in_array($status, $allowed, true)) out(['error'=>'ID ou status inválido'],422);
+        $q = db()->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id,status");
+        $q->execute([$status,$id]);
+        $row = $q->fetch();
+        if (!$row) out(['error'=>'Agendamento não encontrado'],404);
+        out(['ok'=>true,'id'=>(int)$row['id'],'status'=>$row['status']]);
+    }
+
     if ($path === '/api/admin/cancel' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         requireAdmin();
         $id = (int)(body()['id'] ?? 0);
@@ -252,6 +266,31 @@ try {
         $q->execute([$id]);
         if (!$q->fetch()) out(['error'=>'Agendamento não encontrado ou já cancelado'],404);
         out(['ok'=>true,'id'=>$id,'status'=>'cancelled']);
+    }
+
+    if ($path === '/api/admin/reactivate' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        requireAdmin();
+        $id = (int)(body()['id'] ?? 0);
+        if ($id <= 0) out(['error'=>'ID inválido'],422);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $q = $pdo->prepare("SELECT barber_id, appointment_date, appointment_time, status FROM appointments WHERE id=? FOR UPDATE");
+            $q->execute([$id]);
+            $a = $q->fetch();
+            if (!$a) { $pdo->rollBack(); out(['error'=>'Agendamento não encontrado'],404); }
+            if ($a['status'] !== 'cancelled') { $pdo->rollBack(); out(['error'=>'Somente agendamentos cancelados podem ser reativados'],409); }
+            $q = $pdo->prepare("SELECT COUNT(*) FROM appointments WHERE barber_id=? AND appointment_date=? AND appointment_time=? AND status IN ('pending','confirmed') AND id<>?");
+            $q->execute([(int)$a['barber_id'],$a['appointment_date'],$a['appointment_time'],$id]);
+            if ((int)$q->fetchColumn() > 0) { $pdo->rollBack(); out(['error'=>'O horário já foi ocupado por outro agendamento'],409); }
+            $q = $pdo->prepare("UPDATE appointments SET status='pending' WHERE id=? RETURNING id");
+            $q->execute([$id]);
+            $pdo->commit();
+            out(['ok'=>true,'id'=>$id,'status'=>'pending']);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
     }
 
     out(['error'=>'Rota não encontrada'],404);
