@@ -31,6 +31,7 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .notice{margin-top:12px;padding:12px;border-radius:12px;background:#151515;border:1px solid #2b2b2b;color:#aaa;font-size:13px}.notice.ok{border-color:#245a34;color:#bde8c7}.notice.err{border-color:#642b2b;color:#ffc0c0}
 .admin{display:none;margin-top:22px;padding:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}.table .item{background:#111}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
 @media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:300px;height:300px;padding:20px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
+.agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
 </style>
 </head>
 <body>
@@ -68,6 +69,14 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
   </div>
   <div id="dashboard" style="display:none">
     <div class="stats"><div class="stat">Hoje<b id="sToday">0</b><span class="muted">atendimentos</span></div><div class="stat">Clientes<b id="sClients">0</b><span class="muted">cadastrados</span></div><div class="stat">Barbeiros<b id="sBarbers">0</b><span class="muted">ativos</span></div><div class="stat">Serviços<b id="sServices">0</b><span class="muted">disponíveis</span></div></div>
+    <div class="sectionTitle" style="margin-top:20px">AGENDA DO DIA</div>
+    <div class="agendaTools">
+      <div class="field"><label>Data da agenda</label><input id="agendaDate" type="date"></div>
+      <div class="field"><label>Barbeiro</label><select id="agendaBarber"><option value="">Todos os barbeiros</option></select></div>
+      <button class="btn" type="button" onclick="renderAgenda()">ATUALIZAR</button>
+    </div>
+    <div class="agenda" id="agenda"></div>
+    <div class="sectionTitle" style="margin-top:20px">TODOS OS AGENDAMENTOS</div>
     <div class="table" id="appointments"></div>
     <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div>
   </div>
@@ -91,6 +100,8 @@ const fallbackBarbers=[
 ];
 const times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
 let services=[...fallbackServices], barbers=[...fallbackBarbers], chosenTime="";
+let adminPassword="", agendaAppointments=[];
+
 
 function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
@@ -102,7 +113,6 @@ function render(){
  renderSlots();
 }
 let bookedAppointments=[];
-let adminPassword="";
 
 function normalizeAppointment(a){
  return {
@@ -261,14 +271,20 @@ async function loadDashboard(){
  try{
   const data=await api("/api/admin/dashboard",{headers:{"X-Admin-Password":adminPassword}});
   const list=Array.isArray(data.appointments)?data.appointments:[];
+  agendaAppointments=list;
   const stats=data.stats||{};
   document.querySelector("#sToday").textContent=Number(stats.today||0);
   document.querySelector("#sClients").textContent=Number(stats.clients||0);
   document.querySelector("#sBarbers").textContent=Number(stats.barbers||0);
   document.querySelector("#sServices").textContent=Number(stats.services||0);
+  const ab=document.querySelector("#agendaBarber");
+  ab.innerHTML='<option value="">Todos os barbeiros</option>'+barbers.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("");
+  const ad=document.querySelector("#agendaDate");
+  if(!ad.value)ad.value=new Date().toISOString().slice(0,10);
+  renderAgenda();
   document.querySelector("#appointments").innerHTML=list.length?
    list.map(a=>{
-    const status=String(a.status||"pending");
+    const status=String(a.status||"pending").toLowerCase();
     const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído",cancelled:"Cancelado"}[status]||status;
     const cancelled=status==="cancelled";
     return `<div class="item"><span><strong>#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")}</span></span><span style="display:flex;align-items:center;gap:8px"><span class="price">${esc(label)}</span>${cancelled?"":`<button class="btn danger" style="padding:8px 10px" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`}</span></div>`;
@@ -280,6 +296,29 @@ async function loadDashboard(){
  }
 }
 
+function renderAgenda(){
+ const box=document.querySelector("#agenda");
+ if(!box)return;
+ const date=document.querySelector("#agendaDate").value;
+ const barberId=document.querySelector("#agendaBarber").value;
+ const active=agendaAppointments.filter(a=>{
+  const status=String(a.status||"pending").toLowerCase();
+  const sameDate=String(a.date||"").slice(0,10)===String(date||"").slice(0,10);
+  const sameBarber=!barberId || Number(a.barber_id)===Number(barberId);
+  return sameDate && sameBarber && status!=="cancelled";
+ });
+ const byTime={};
+ active.forEach(a=>{const t=String(a.time||"").slice(0,5);if(t)byTime[t]=a});
+ const labelDate=date?new Date(date+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}):"Escolha uma data";
+ const slots=times.map(t=>{
+  const a=byTime[t];
+  if(!a)return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaFree">Horário livre</div></div></div>`;
+  const status=String(a.status||"pending").toLowerCase();
+  const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído"}[status]||status;
+  return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaClient">#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</div><div class="agendaMeta">${esc(a.service_name||"Serviço")} • ${esc(a.barber_name||"Barbeiro")}</div><div class="agendaMeta">${esc(a.customer_phone||"")}</div><span class="status ${esc(status)}">${esc(label)}</span></div></div>`;
+ }).join("");
+ box.innerHTML=`<div class="agendaHeader"><span class="agendaDay">${esc(labelDate)}</span><span class="muted">${active.length} atendimento(s)</span></div><div class="agendaGrid">${slots}</div>`;
+}
 async function cancelAppointment(id){
  if(!adminPassword)return;
  if(!confirm(`Cancelar o agendamento #${id}?`))return;
