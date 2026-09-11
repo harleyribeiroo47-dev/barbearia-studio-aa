@@ -34,7 +34,7 @@ function db(): PDO {
 function init(PDO $p): void {
     // NÃO recria nem altera a estrutura existente de appointments.
     // A base original usa appointment_date / appointment_time e status em inglês.
-    $p->exec("CREATE TABLE IF NOT EXISTS barber_schedules(
+    $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules(
         id BIGSERIAL PRIMARY KEY,
         barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,
         day_of_week INTEGER NOT NULL,
@@ -136,7 +136,7 @@ try {
 
     if($path==='/api/schedules' && $_SERVER['REQUEST_METHOD']==='GET'){
         $id=(int)($_GET['barber_id']??0);
-        $q=$p->prepare("SELECT day_of_week,start_time::text,end_time::text,break_start::text,break_end::text,active FROM barber_schedules WHERE barber_id=? ORDER BY day_of_week");
+        $q=$p->prepare("SELECT day_of_week,start_time::text,end_time::text,break_start::text,break_end::text,active FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
         $q->execute([$id]);
         out($q->fetchAll());
     }
@@ -149,8 +149,7 @@ try {
         if(!is_array($items)) $items=[];
         $p->beginTransaction();
         try{
-            $q=$p->prepare("DELETE FROM barber_schedules WHERE barber_id=?");$q->execute([$id]);
-            $q=$p->prepare("INSERT INTO barber_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,?)");
+            $q=$p->prepare("DELETE FROM studio_aa_schedules WHERE barber_id=?");$q->execute([$id]);
             foreach($items as $r){
                 $day=(int)($r['day_of_week'] ?? $r['weekday'] ?? 0);
                 $start=timeOrNull($r['start_time'] ?? $r['open_time'] ?? null);
@@ -158,7 +157,9 @@ try {
                 $bs=timeOrNull($r['break_start'] ?? null);
                 $be=timeOrNull($r['break_end'] ?? null);
                 $active=boolValue($r['active'] ?? false);
-                $q->execute([$id,$day,$start,$end,$bs,$be,$active]);
+                $activeSql=$active ? 'TRUE' : 'FALSE';
+                $q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,$activeSql)");
+                $q->execute([$id,$day,$start,$end,$bs,$be]);
             }
             $p->commit(); out(['ok'=>true]);
         }catch(Throwable $e){$p->rollBack();throw $e;}
@@ -168,24 +169,24 @@ try {
     if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='GET'){
         checkAdmin();
         $id=(int)($_GET['barber_id']??0);
-        $q=$p->prepare("SELECT day_of_week AS weekday,start_time::text AS open_time,end_time::text AS close_time,break_start::text AS break_start,break_end::text AS break_end,active FROM barber_schedules WHERE barber_id=? ORDER BY day_of_week");
+        $q=$p->prepare("SELECT day_of_week AS weekday,start_time::text AS open_time,end_time::text AS close_time,break_start::text AS break_start,break_end::text AS break_end,active FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
         $q->execute([$id]);
         $rows=$q->fetchAll();
-        $by=[]; foreach($rows as $r) $by[(int)$r['weekday']=$r];
+        $by=[]; foreach($rows as $r) $by[(int)$r['weekday']]=$r;
         $out=[];
         for($i=0;$i<7;$i++) $out[]=$by[$i] ?? ['weekday'=>$i,'open_time'=>'09:00','close_time'=>'18:00','break_start'=>'12:30','break_end'=>'14:00','active'=>false];
         out(['schedule'=>$out]);
     }
 
     if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='POST'){
+        checkAdmin();
         $x=body(); $id=(int)($x['barber_id']??0);
         if(!$id)out(['error'=>'Barbeiro inválido.'],422);
         $items=$x['schedule'] ?? [];
         if(!is_array($items)) $items=[];
         $p->beginTransaction();
         try{
-            $q=$p->prepare("DELETE FROM barber_schedules WHERE barber_id=?");$q->execute([$id]);
-            $q=$p->prepare("INSERT INTO barber_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,?)");
+            $q=$p->prepare("DELETE FROM studio_aa_schedules WHERE barber_id=?");$q->execute([$id]);
             foreach($items as $r){
                 $day=(int)($r['day_of_week'] ?? $r['weekday'] ?? 0);
                 $start=timeOrNull($r['start_time'] ?? $r['open_time'] ?? null);
@@ -193,7 +194,9 @@ try {
                 $bs=timeOrNull($r['break_start'] ?? null);
                 $be=timeOrNull($r['break_end'] ?? null);
                 $active=boolValue($r['active'] ?? false);
-                $q->execute([$id,$day,$start,$end,$bs,$be,$active]);
+                $activeSql=$active ? 'TRUE' : 'FALSE';
+                $q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,$activeSql)");
+                $q->execute([$id,$day,$start,$end,$bs,$be]);
             }
             $p->commit(); out(['ok'=>true]);
         }catch(Throwable $e){$p->rollBack();throw $e;}
