@@ -26,6 +26,10 @@ function initDb(PDO $p): void {
     $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_barber_date ON appointments(barber_id,appointment_date)");
     $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,day_of_week INTEGER NOT NULL,start_time TIME,end_time TIME,break_start TIME,break_end TIME,active BOOLEAN NOT NULL DEFAULT TRUE,UNIQUE(barber_id,day_of_week))");
+    foreach ([
+        'day_of_week'=>'INTEGER', 'start_time'=>'TIME', 'end_time'=>'TIME',
+        'break_start'=>'TIME', 'break_end'=>'TIME', 'active'=>'BOOLEAN NOT NULL DEFAULT TRUE'
+    ] as $col=>$type) { $p->exec("ALTER TABLE studio_aa_schedules ADD COLUMN IF NOT EXISTS $col $type"); }
     $services=[['Corte Masculino',30,35,1],['Barba Tradicional',20,25,2],['Combo Corte + Barba',50,55,3],['Sobrancelha',15,15,4],['Pigmentação de Barba',30,40,5]];
     $q=$p->prepare("INSERT INTO services(name,duration,price,sort_order) SELECT ?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM services WHERE name=? )"); foreach($services as $x)$q->execute([$x[0],$x[1],$x[2],$x[3],$x[0]]);
     $barbers=[['Lucas','Especialista em degradê',4.9],['Rafael','Barba e bigode',4.8],['Thiago','Corte masculino',4.7],['Matheus','Estilo clássico',4.9]];
@@ -35,7 +39,7 @@ function boolv($v): bool { if(is_bool($v)) return $v; $s=strtolower(trim((string
 function timev($v): ?string { $s=trim((string)$v); return $s===''?null:$s; }
 function adminOk(): bool { return true; } // compatibilidade com o painel atual
 function getSchedule(PDO $p,int $barber): array {
-    $q=$p->prepare("SELECT day_of_week AS weekday,start_time,end_time,break_start,break_end,active FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
+    $q=$p->prepare("SELECT day_of_week AS weekday, day_of_week, active AS open, active, start_time AS start, start_time, end_time AS end, end_time, break_start, break_end FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
     $q->execute([$barber]); return $q->fetchAll();
 }
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/'; $method=$_SERVER['REQUEST_METHOD'];
@@ -66,7 +70,7 @@ try {
     if($path==='/api/admin/barbers' && in_array($method,['POST','PUT'],true)) {
         $d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));if($name==='')out(['error'=>'Nome do barbeiro é obrigatório'],422);
         $spec=(string)($d['specialty']??'');$rating=(float)($d['rating']??5);$active=array_key_exists('active',$d)?boolv($d['active']):true;$p=db();
-        if($id>0){$q=$p->prepare('UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id');$q->execute([$name,$spec,$rating,$active,$id]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);}else{$q=$p->prepare('INSERT INTO barbers(name,specialty,rating,active) VALUES(?,?,?,?) RETURNING id');$q->execute([$name,$spec,$rating,$active]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
+        if($id>0){$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("UPDATE barbers SET name=?,specialty=?,rating=? ,active=$activeSql WHERE id=? RETURNING id");$q->execute([$name,$spec,$rating,$id]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);}else{$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("INSERT INTO barbers(name,specialty,rating,active) VALUES(?,?,?,$activeSql) RETURNING id");$q->execute([$name,$spec,$rating]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
     }
     if(preg_match('#^/api/barbers/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$d['id']=(int)$m[1];$_POST=[]; $name=trim((string)($d['name']??''));if($name==='')out(['error'=>'Nome do barbeiro é obrigatório'],422);$p=db();$q=$p->prepare('UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id');$q->execute([$name,(string)($d['specialty']??''),(float)($d['rating']??5),array_key_exists('active',$d)?boolv($d['active']):true,(int)$m[1]]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]); }
 
@@ -74,17 +78,28 @@ try {
     if($path==='/api/admin/services' && $method==='GET') out(db()->query('SELECT id,name,duration,price,active,sort_order FROM services ORDER BY sort_order,id')->fetchAll());
     if($path==='/api/admin/services' && in_array($method,['POST','PUT'],true)){
         $d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));$duration=(int)($d['duration']??0);$price=(float)($d['price']??0);if($name===''||$duration<=0)out(['error'=>'Nome e duração são obrigatórios'],422);$active=array_key_exists('active',$d)?boolv($d['active']):true;$sort=(int)($d['sort_order']??0);$p=db();
-        if($id>0){$q=$p->prepare('UPDATE services SET name=?,duration=?,price=?,active=?,sort_order=? WHERE id=? RETURNING id');$q->execute([$name,$duration,$price,$active,$sort,$id]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);}else{$q=$p->prepare('INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,?,?) RETURNING id');$q->execute([$name,$duration,$price,$active,$sort]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
+        if($id>0){$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("UPDATE services SET name=?,duration=?,price=?,active=$activeSql,sort_order=? WHERE id=? RETURNING id");$q->execute([$name,$duration,$price,$sort,$id]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);}else{$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,$activeSql,?) RETURNING id");$q->execute([$name,$duration,$price,$sort]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
     }
     if(preg_match('#^/api/services/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$p=db();$q=$p->prepare('UPDATE services SET name=?,duration=?,price=?,active=? WHERE id=? RETURNING id');$q->execute([trim((string)($d['name']??'')),(int)($d['duration']??0),(float)($d['price']??0),array_key_exists('active',$d)?boolv($d['active']):true,(int)$m[1]]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]);}
 
-    // Horários: tabela isolada e payload flexível
-    if(($path==='/api/admin/schedule'||$path==='/api/schedules') && $method==='GET'){ $bid=(int)($_GET['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);out(getSchedule(db(),$bid)); }
+    // Horários: tabela isolada, payload flexível e sem bind de boolean/time problemático
+    if(($path==='/api/admin/schedule'||$path==='/api/schedules') && $method==='GET'){ $bid=(int)($_GET['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);out(['schedule'=>getSchedule(db(),$bid)]); }
     if(($path==='/api/admin/schedule'||$path==='/api/schedules') && in_array($method,['POST','PUT'],true)){
-        $d=body();$bid=(int)($d['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);$rows=$d['schedule']??$d['schedules']??$d['days']??null;if(!is_array($rows))out(['error'=>'Horários inválidos'],422);$p=db();$p->beginTransaction();try{
-            $del=$p->prepare('DELETE FROM studio_aa_schedules WHERE barber_id=?');$del->execute([$bid]);
-            foreach($rows as $key=>$r){if(!is_array($r))continue;$day=(int)($r['weekday']??$r['day_of_week']??$r['day']??$key);if($day<0||$day>6)continue;$active=array_key_exists('active',$r)?boolv($r['active']):(array_key_exists('open',$r)?boolv($r['open']):true);$start=timev($r['start_time']??$r['start']??$r['open_time']??'');$end=timev($r['end_time']??$r['end']??$r['close_time']??'');$bs=timev($r['break_start']??$r['pause_start']??$r['interval_start']??'');$be=timev($r['break_end']??$r['pause_end']??$r['interval_end']??'');$as=$active?'TRUE':'FALSE';$q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,$as)");$q->execute([$bid,$day,$start,$end,$bs,$be]);}
-            $p->commit();out(['ok'=>true,'barber_id'=>$bid,'schedule'=>getSchedule($p,$bid)]);
+        $d=body();$bid=(int)($d['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);$rows=$d['schedule']??$d['schedules']??$d['days']??null;if(!is_array($rows))out(['error'=>'Horários inválidos'],422);$p=db();
+        $p->beginTransaction();
+        try{
+            $p->prepare('DELETE FROM studio_aa_schedules WHERE barber_id=?')->execute([$bid]);
+            foreach($rows as $key=>$r){
+                if(!is_array($r))continue;
+                $day=(int)($r['weekday']??$r['day_of_week']??$r['day']??$key); if($day<0||$day>6)continue;
+                $active=array_key_exists('active',$r)?boolv($r['active']):(array_key_exists('open',$r)?boolv($r['open']):true);
+                $start=timev($r['start_time']??$r['start']??$r['open_time']??''); $end=timev($r['end_time']??$r['end']??$r['close_time']??'');
+                $bs=timev($r['break_start']??$r['pause_start']??$r['interval_start']??''); $be=timev($r['break_end']??$r['pause_end']??$r['interval_end']??'');
+                $activeSql=$active?'TRUE':'FALSE';
+                $q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,CAST(? AS TIME),CAST(? AS TIME),$activeSql)");
+                $q->execute([$bid,$day,$start,$end,$bs,$be]);
+            }
+            $p->commit(); out(['ok'=>true,'barber_id'=>$bid,'schedule'=>getSchedule($p,$bid)]);
         }catch(Throwable $e){if($p->inTransaction())$p->rollBack();throw $e;}
     }
 
