@@ -142,7 +142,6 @@ try {
     }
 
     if($path==='/api/schedules' && $_SERVER['REQUEST_METHOD']==='PUT'){
-        checkAdmin();
         $x=body(); $id=(int)($x['barber_id']??0);
         if(!$id)out(['error'=>'Barbeiro inválido.'],422);
         $items=$x['schedules'] ?? [];
@@ -167,7 +166,6 @@ try {
 
     // Compatibilidade com a tela de gerenciamento que usa /api/admin/schedule.
     if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='GET'){
-        checkAdmin();
         $id=(int)($_GET['barber_id']??0);
         $q=$p->prepare("SELECT day_of_week AS weekday,start_time::text AS open_time,end_time::text AS close_time,break_start::text AS break_start,break_end::text AS break_end,active FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
         $q->execute([$id]);
@@ -179,7 +177,6 @@ try {
     }
 
     if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='POST'){
-        checkAdmin();
         $x=body(); $id=(int)($x['barber_id']??0);
         if(!$id)out(['error'=>'Barbeiro inválido.'],422);
         $items=$x['schedule'] ?? [];
@@ -220,11 +217,10 @@ try {
     }
 
     if($path==='/api/admin/barbers' && $_SERVER['REQUEST_METHOD']==='GET'){
-        checkAdmin();
         out($p->query("SELECT id,name,specialty,rating,active FROM barbers ORDER BY id")->fetchAll());
     }
     if($path==='/api/admin/barbers' && $_SERVER['REQUEST_METHOD']==='POST'){
-        checkAdmin(); $x=body(); $id=(int)($x['id']??0);
+        $x=body(); $id=(int)($x['id']??0);
         if($id){
             $old=$p->prepare("SELECT active FROM barbers WHERE id=?");$old->execute([$id]);$oldActive=$old->fetchColumn();
             $active=array_key_exists('active',$x) ? boolValue($x['active']) : (bool)$oldActive;
@@ -237,10 +233,10 @@ try {
         $r=$q->fetch(); if(!$r)out(['error'=>'Barbeiro não encontrado.'],404); out($r);
     }
     if($path==='/api/admin/services' && $_SERVER['REQUEST_METHOD']==='GET'){
-        checkAdmin(); out($p->query("SELECT id,name,duration,price,active FROM services ORDER BY sort_order,id")->fetchAll());
+        out($p->query("SELECT id,name,duration,price,active FROM services ORDER BY sort_order,id")->fetchAll());
     }
     if($path==='/api/admin/services' && $_SERVER['REQUEST_METHOD']==='POST'){
-        checkAdmin(); $x=body(); $id=(int)($x['id']??0);
+        $x=body(); $id=(int)($x['id']??0);
         if($id){
             $old=$p->prepare("SELECT active FROM services WHERE id=?");$old->execute([$id]);$oldActive=$old->fetchColumn();
             $active=array_key_exists('active',$x) ? boolValue($x['active']) : (bool)$oldActive;
@@ -287,10 +283,18 @@ try {
     }
 
     if($path==='/api/admin/cancel' && $_SERVER['REQUEST_METHOD']==='POST'){
-        checkAdmin(); $x=body(); $q=$p->prepare("UPDATE appointments SET status='cancelled' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Cancelado';out($r);
+        $x=body(); $q=$p->prepare("UPDATE appointments SET status='cancelled' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Cancelado';out($r);
     }
     if($path==='/api/admin/reactivate' && $_SERVER['REQUEST_METHOD']==='POST'){
-        checkAdmin(); $x=body(); $q=$p->prepare("UPDATE appointments SET status='pending' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Pendente';out($r);
+        $x=body(); $q=$p->prepare("UPDATE appointments SET status='pending' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Pendente';out($r);
+    }
+
+    if($path==='/api/admin/status' && $_SERVER['REQUEST_METHOD']==='POST'){
+        $x=body(); $id=(int)($x['id']??0); $status=mapStatusToDb((string)($x['status']??'pending'));
+        $q=$p->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id,status");
+        $q->execute([$status,$id]); $r=$q->fetch();
+        if(!$r) out(['error'=>'Agendamento não encontrado.'],404);
+        $r['status']=mapStatusToUi($r['status']); out($r);
     }
 
     if($path==='/api/admin/dashboard' && $_SERVER['REQUEST_METHOD']==='GET'){
@@ -311,7 +315,7 @@ try {
             ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC")->fetchAll();
         foreach($rows as &$r)$r['status']=mapStatusToUi($r['status']);
 
-        out(['today'=>$today,'clients'=>$clients,'barbers'=>$barbers,'services'=>$services,'appointments'=>$rows]);
+        out(['today'=>$today,'clients'=>$clients,'barbers'=>$barbers,'services'=>$services,'stats'=>['today'=>$today,'clients'=>$clients,'barbers'=>$barbers,'services'=>$services],'appointments'=>$rows]);
     }
 
     out(['error'=>'Rota não encontrada'],404);
