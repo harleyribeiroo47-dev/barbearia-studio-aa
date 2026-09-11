@@ -64,12 +64,35 @@ function mapStatusToUi(string $s): string {
     };
 }
 
+function checkAdmin(): void {
+    $expected=getenv('ADMIN_PASSWORD') ?: 'studioaa123';
+    $given=(string)($_SERVER['HTTP_X_ADMIN_PASSWORD'] ?? '');
+    if($given==='' || !hash_equals($expected,$given)) out(['error'=>'Não autorizado'],401);
+}
+function boolValue($v): bool {
+    if(is_bool($v)) return $v;
+    if(is_int($v) || is_float($v)) return ((int)$v)===1;
+    $s=mb_strtolower(trim((string)$v));
+    return in_array($s,['1','true','t','yes','sim','on','aberto','ativo'],true);
+}
+function timeOrNull($v): ?string {
+    $s=trim((string)($v ?? ''));
+    return $s==='' ? null : $s;
+}
+
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH) ?: '/';
 try {
     $p=db();
 
     if($path==='/api/health' && $_SERVER['REQUEST_METHOD']==='GET')
         out(['ok'=>true,'service'=>'Studio A.A API']);
+
+    if($path==='/api/admin/login' && $_SERVER['REQUEST_METHOD']==='POST'){
+        $x=body();
+        $expected=getenv('ADMIN_PASSWORD') ?: 'studioaa123';
+        if(hash_equals($expected,(string)($x['password']??''))) out(['ok'=>true]);
+        out(['error'=>'Senha incorreta'],401);
+    }
 
     if($path==='/api/services' && $_SERVER['REQUEST_METHOD']==='GET')
         out($p->query("SELECT id,name,duration,price,active FROM services ORDER BY sort_order,id")->fetchAll());
@@ -119,14 +142,59 @@ try {
     }
 
     if($path==='/api/schedules' && $_SERVER['REQUEST_METHOD']==='PUT'){
+        checkAdmin();
         $x=body(); $id=(int)($x['barber_id']??0);
         if(!$id)out(['error'=>'Barbeiro inválido.'],422);
+        $items=$x['schedules'] ?? [];
+        if(!is_array($items)) $items=[];
         $p->beginTransaction();
         try{
             $q=$p->prepare("DELETE FROM barber_schedules WHERE barber_id=?");$q->execute([$id]);
             $q=$p->prepare("INSERT INTO barber_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,?)");
-            foreach(($x['schedules']??[]) as $r){
-                $q->execute([$id,(int)$r['day_of_week'],$r['start_time']?:null,$r['end_time']?:null,$r['break_start']?:null,$r['break_end']?:null,!empty($r['active'])]);
+            foreach($items as $r){
+                $day=(int)($r['day_of_week'] ?? $r['weekday'] ?? 0);
+                $start=timeOrNull($r['start_time'] ?? $r['open_time'] ?? null);
+                $end=timeOrNull($r['end_time'] ?? $r['close_time'] ?? null);
+                $bs=timeOrNull($r['break_start'] ?? null);
+                $be=timeOrNull($r['break_end'] ?? null);
+                $active=boolValue($r['active'] ?? false);
+                $q->execute([$id,$day,$start,$end,$bs,$be,$active]);
+            }
+            $p->commit(); out(['ok'=>true]);
+        }catch(Throwable $e){$p->rollBack();throw $e;}
+    }
+
+    // Compatibilidade com a tela de gerenciamento que usa /api/admin/schedule.
+    if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='GET'){
+        checkAdmin();
+        $id=(int)($_GET['barber_id']??0);
+        $q=$p->prepare("SELECT day_of_week AS weekday,start_time::text AS open_time,end_time::text AS close_time,break_start::text AS break_start,break_end::text AS break_end,active FROM barber_schedules WHERE barber_id=? ORDER BY day_of_week");
+        $q->execute([$id]);
+        $rows=$q->fetchAll();
+        $by=[]; foreach($rows as $r) $by[(int)$r['weekday']=$r];
+        $out=[];
+        for($i=0;$i<7;$i++) $out[]=$by[$i] ?? ['weekday'=>$i,'open_time'=>'09:00','close_time'=>'18:00','break_start'=>'12:30','break_end'=>'14:00','active'=>false];
+        out(['schedule'=>$out]);
+    }
+
+    if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='POST'){
+        checkAdmin();
+        $x=body(); $id=(int)($x['barber_id']??0);
+        if(!$id)out(['error'=>'Barbeiro inválido.'],422);
+        $items=$x['schedule'] ?? [];
+        if(!is_array($items)) $items=[];
+        $p->beginTransaction();
+        try{
+            $q=$p->prepare("DELETE FROM barber_schedules WHERE barber_id=?");$q->execute([$id]);
+            $q=$p->prepare("INSERT INTO barber_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,?)");
+            foreach($items as $r){
+                $day=(int)($r['day_of_week'] ?? $r['weekday'] ?? 0);
+                $start=timeOrNull($r['start_time'] ?? $r['open_time'] ?? null);
+                $end=timeOrNull($r['end_time'] ?? $r['close_time'] ?? null);
+                $bs=timeOrNull($r['break_start'] ?? null);
+                $be=timeOrNull($r['break_end'] ?? null);
+                $active=boolValue($r['active'] ?? false);
+                $q->execute([$id,$day,$start,$end,$bs,$be,$active]);
             }
             $p->commit(); out(['ok'=>true]);
         }catch(Throwable $e){$p->rollBack();throw $e;}
@@ -147,6 +215,40 @@ try {
         $rows=$q->fetchAll();
         foreach($rows as &$r)$r['status']=mapStatusToUi($r['status']);
         out($rows);
+    }
+
+    if($path==='/api/admin/barbers' && $_SERVER['REQUEST_METHOD']==='GET'){
+        checkAdmin();
+        out($p->query("SELECT id,name,specialty,rating,active FROM barbers ORDER BY id")->fetchAll());
+    }
+    if($path==='/api/admin/barbers' && $_SERVER['REQUEST_METHOD']==='POST'){
+        checkAdmin(); $x=body(); $id=(int)($x['id']??0);
+        if($id){
+            $old=$p->prepare("SELECT active FROM barbers WHERE id=?");$old->execute([$id]);$oldActive=$old->fetchColumn();
+            $active=array_key_exists('active',$x) ? boolValue($x['active']) : (bool)$oldActive;
+            $q=$p->prepare("UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id,name,specialty,rating,active");
+            $q->execute([trim($x['name']??''),trim($x['specialty']??''),(float)($x['rating']??5),$active,$id]);
+        }else{
+            $q=$p->prepare("INSERT INTO barbers(name,specialty,rating,active) VALUES(?,?,?,?) RETURNING id,name,specialty,rating,active");
+            $q->execute([trim($x['name']??''),trim($x['specialty']??''),(float)($x['rating']??5),boolValue($x['active']??true)]);
+        }
+        $r=$q->fetch(); if(!$r)out(['error'=>'Barbeiro não encontrado.'],404); out($r);
+    }
+    if($path==='/api/admin/services' && $_SERVER['REQUEST_METHOD']==='GET'){
+        checkAdmin(); out($p->query("SELECT id,name,duration,price,active FROM services ORDER BY sort_order,id")->fetchAll());
+    }
+    if($path==='/api/admin/services' && $_SERVER['REQUEST_METHOD']==='POST'){
+        checkAdmin(); $x=body(); $id=(int)($x['id']??0);
+        if($id){
+            $old=$p->prepare("SELECT active FROM services WHERE id=?");$old->execute([$id]);$oldActive=$old->fetchColumn();
+            $active=array_key_exists('active',$x) ? boolValue($x['active']) : (bool)$oldActive;
+            $q=$p->prepare("UPDATE services SET name=?,duration=?,price=?,active=? WHERE id=? RETURNING id,name,duration,price,active");
+            $q->execute([trim($x['name']??''),(int)($x['duration']??30),(float)($x['price']??0),$active,$id]);
+        }else{
+            $q=$p->prepare("INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,?,COALESCE((SELECT MAX(sort_order)+1 FROM services),1)) RETURNING id,name,duration,price,active");
+            $q->execute([trim($x['name']??''),(int)($x['duration']??30),(float)($x['price']??0),boolValue($x['active']??true)]);
+        }
+        $r=$q->fetch(); if(!$r)out(['error'=>'Serviço não encontrado.'],404); out($r);
     }
 
     if($path==='/api/appointments' && $_SERVER['REQUEST_METHOD']==='POST'){
@@ -180,6 +282,13 @@ try {
         $q->execute([$status,(int)$m[1]]);
         $r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);
         $r['status']=mapStatusToUi($r['status']);out($r);
+    }
+
+    if($path==='/api/admin/cancel' && $_SERVER['REQUEST_METHOD']==='POST'){
+        checkAdmin(); $x=body(); $q=$p->prepare("UPDATE appointments SET status='cancelled' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Cancelado';out($r);
+    }
+    if($path==='/api/admin/reactivate' && $_SERVER['REQUEST_METHOD']==='POST'){
+        checkAdmin(); $x=body(); $q=$p->prepare("UPDATE appointments SET status='pending' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Pendente';out($r);
     }
 
     if($path==='/api/admin/dashboard' && $_SERVER['REQUEST_METHOD']==='GET'){
