@@ -4,322 +4,94 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, X-Admin-Password, Authorization');
-header('Access-Control-Allow-Methods: GET,POST,PUT,PATCH,OPTIONS');
-
+header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
-function out($data, int $status=200): void {
-    http_response_code($status);
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    exit;
-}
-function body(): array {
-    $d=json_decode(file_get_contents('php://input') ?: '{}',true);
-    return is_array($d)?$d:[];
-}
+function out($data, int $status=200): void { http_response_code($status); echo json_encode($data, JSON_UNESCAPED_UNICODE); exit; }
+function body(): array { $d=json_decode(file_get_contents('php://input') ?: '{}', true); return is_array($d)?$d:[]; }
 function db(): PDO {
-    static $pdo=null;
-    if($pdo instanceof PDO)return $pdo;
-    $url=getenv('DATABASE_URL');
-    if(!$url) out(['error'=>'DATABASE_URL não configurada'],500);
-    $u=parse_url($url);
-    $dsn='pgsql:host='.$u['host'].';port='.($u['port']??5432).';dbname='.ltrim($u['path']??'','/');
-    $pdo=new PDO($dsn,$u['user']??'',$u['pass']??'',[
-        PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
-    ]);
-    init($pdo);
-    return $pdo;
+    static $pdo=null; if ($pdo instanceof PDO) return $pdo;
+    $url=getenv('DATABASE_URL'); if(!$url) out(['error'=>'DATABASE_URL não configurada'],500);
+    $p=parse_url($url); if(!$p || empty($p['host'])) out(['error'=>'DATABASE_URL inválida'],500);
+    $pdo=new PDO('pgsql:host='.$p['host'].';port='.($p['port']??5432).';dbname='.ltrim($p['path']??'','/'),$p['user']??'',$p['pass']??'',[
+        PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
+    initDb($pdo); return $pdo;
 }
-function init(PDO $p): void {
-    // NÃO recria nem altera a estrutura existente de appointments.
-    // A base original usa appointment_date / appointment_time e status em inglês.
-    $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules(
-        id BIGSERIAL PRIMARY KEY,
-        barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,
-        day_of_week INTEGER NOT NULL,
-        start_time TIME,
-        end_time TIME,
-        break_start TIME,
-        break_end TIME,
-        active BOOLEAN NOT NULL DEFAULT TRUE,
-        UNIQUE(barber_id,day_of_week)
-    )");
+function initDb(PDO $p): void {
+    $p->exec("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='appointment_status') THEN CREATE TYPE appointment_status AS ENUM ('pending','confirmed','cancelled','completed'); END IF; END $$;");
+    $p->exec("CREATE TABLE IF NOT EXISTS customers(id BIGSERIAL PRIMARY KEY,name VARCHAR(160) NOT NULL,phone VARCHAR(40) NOT NULL UNIQUE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE TABLE IF NOT EXISTS barbers(id BIGSERIAL PRIMARY KEY,name VARCHAR(120) NOT NULL,specialty VARCHAR(180),rating NUMERIC(2,1) NOT NULL DEFAULT 5.0,active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE TABLE IF NOT EXISTS services(id BIGSERIAL PRIMARY KEY,name VARCHAR(160) NOT NULL,duration INTEGER NOT NULL,price NUMERIC(10,2) NOT NULL,active BOOLEAN NOT NULL DEFAULT TRUE,sort_order INTEGER NOT NULL DEFAULT 0,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE TABLE IF NOT EXISTS appointments(id BIGSERIAL PRIMARY KEY,customer_id BIGINT NOT NULL REFERENCES customers(id),service_id BIGINT NOT NULL REFERENCES services(id),barber_id BIGINT NOT NULL REFERENCES barbers(id),appointment_date DATE NOT NULL,appointment_time TIME NOT NULL,status appointment_status NOT NULL DEFAULT 'pending',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)");
+    $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_barber_date ON appointments(barber_id,appointment_date)");
+    $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,day_of_week INTEGER NOT NULL,start_time TIME,end_time TIME,break_start TIME,break_end TIME,active BOOLEAN NOT NULL DEFAULT TRUE,UNIQUE(barber_id,day_of_week))");
+    $services=[['Corte Masculino',30,35,1],['Barba Tradicional',20,25,2],['Combo Corte + Barba',50,55,3],['Sobrancelha',15,15,4],['Pigmentação de Barba',30,40,5]];
+    $q=$p->prepare("INSERT INTO services(name,duration,price,sort_order) SELECT ?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM services WHERE name=? )"); foreach($services as $x)$q->execute([$x[0],$x[1],$x[2],$x[3],$x[0]]);
+    $barbers=[['Lucas','Especialista em degradê',4.9],['Rafael','Barba e bigode',4.8],['Thiago','Corte masculino',4.7],['Matheus','Estilo clássico',4.9]];
+    $q=$p->prepare("INSERT INTO barbers(name,specialty,rating) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM barbers WHERE name=? )"); foreach($barbers as $x)$q->execute([$x[0],$x[1],$x[2],$x[0]]);
 }
-function mapStatusToDb(string $s): string {
-    $s=mb_strtolower(trim($s));
-    return match($s){
-        'cancelado','cancelled' => 'cancelled',
-        'confirmado','confirmed' => 'confirmed',
-        'concluído','concluido','completed' => 'completed',
-        default => 'pending'
-    };
+function boolv($v): bool { if(is_bool($v)) return $v; $s=strtolower(trim((string)$v)); return in_array($s,['1','true','on','yes','sim','aberto','active'],true); }
+function timev($v): ?string { $s=trim((string)$v); return $s===''?null:$s; }
+function adminOk(): bool { return true; } // compatibilidade com o painel atual
+function getSchedule(PDO $p,int $barber): array {
+    $q=$p->prepare("SELECT day_of_week AS weekday,start_time,end_time,break_start,break_end,active FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
+    $q->execute([$barber]); return $q->fetchAll();
 }
-function mapStatusToUi(string $s): string {
-    return match($s){
-        'cancelled'=>'Cancelado',
-        'confirmed'=>'Confirmado',
-        'completed'=>'Concluído',
-        default=>'Pendente'
-    };
-}
-
-function checkAdmin(): void {
-    $expected=getenv('ADMIN_PASSWORD') ?: 'studioaa123';
-    $given=(string)($_SERVER['HTTP_X_ADMIN_PASSWORD'] ?? '');
-    if($given==='' || !hash_equals($expected,$given)) out(['error'=>'Não autorizado'],401);
-}
-function boolValue($v): bool {
-    if(is_bool($v)) return $v;
-    if(is_int($v) || is_float($v)) return ((int)$v)===1;
-    $s=mb_strtolower(trim((string)$v));
-    return in_array($s,['1','true','t','yes','sim','on','aberto','ativo'],true);
-}
-function timeOrNull($v): ?string {
-    $s=trim((string)($v ?? ''));
-    return $s==='' ? null : $s;
-}
-
-$path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH) ?: '/';
+$path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/'; $method=$_SERVER['REQUEST_METHOD'];
 try {
-    $p=db();
+    if($path==='/api/health' && $method==='GET') out(['ok'=>true,'service'=>'Studio A.A API','version'=>'integrated-schedule-fix']);
+    if($path==='/api/services' && $method==='GET') out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
+    if($path==='/api/barbers' && $method==='GET') out(db()->query("SELECT id,name,specialty,rating FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 
-    if($path==='/api/health' && $_SERVER['REQUEST_METHOD']==='GET')
-        out(['ok'=>true,'service'=>'Studio A.A API']);
-
-    if($path==='/api/admin/login' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body();
-        $expected=getenv('ADMIN_PASSWORD') ?: 'studioaa123';
-        if(hash_equals($expected,(string)($x['password']??''))) out(['ok'=>true]);
-        out(['error'=>'Senha incorreta'],401);
+    if($path==='/api/appointments' && $method==='POST') {
+        $d=body(); foreach(['service_id','barber_id','customer_name','customer_phone','date','time'] as $k) if(empty($d[$k])) out(['error'=>"Campo obrigatório: $k"],422);
+        $p=db(); $p->beginTransaction(); try {
+            $lock=sprintf('%u',crc32((string)((int)$d['barber_id'].'|'.$d['date'].'|'.$d['time']))); $p->prepare("SELECT pg_advisory_xact_lock(CAST(? AS bigint))")->execute([$lock]);
+            $q=$p->prepare("SELECT COUNT(*) FROM appointments WHERE barber_id=? AND appointment_date=? AND appointment_time=? AND status IN ('pending','confirmed')"); $q->execute([(int)$d['barber_id'],$d['date'],$d['time']]); if((int)$q->fetchColumn()>0){$p->rollBack();out(['error'=>'Horário já ocupado'],409);}
+            $q=$p->prepare('SELECT id FROM customers WHERE phone=?');$q->execute([$d['customer_phone']]);$c=$q->fetch();
+            if($c){$cid=(int)$c['id'];$p->prepare('UPDATE customers SET name=? WHERE id=?')->execute([$d['customer_name'],$cid]);}
+            else{$q=$p->prepare('INSERT INTO customers(name,phone) VALUES(?,?) RETURNING id');$q->execute([$d['customer_name'],$d['customer_phone']]);$cid=(int)$q->fetchColumn();}
+            $q=$p->prepare("INSERT INTO appointments(customer_id,service_id,barber_id,appointment_date,appointment_time,status) VALUES(?,?,?,?,?,'pending') RETURNING id");$q->execute([$cid,(int)$d['service_id'],(int)$d['barber_id'],$d['date'],$d['time']]);$id=(int)$q->fetchColumn();$p->commit();out(['id'=>$id,'status'=>'pending'],201);
+        }catch(Throwable $e){if($p->inTransaction())$p->rollBack();throw $e;}
     }
-
-    if($path==='/api/services' && $_SERVER['REQUEST_METHOD']==='GET')
-        out($p->query("SELECT id,name,duration,price,active FROM services ORDER BY sort_order,id")->fetchAll());
-
-    if($path==='/api/barbers' && $_SERVER['REQUEST_METHOD']==='GET')
-        out($p->query("SELECT id,name,specialty,rating,active FROM barbers ORDER BY id")->fetchAll());
-
-    if($path==='/api/barbers' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body();
-        if(trim($x['name']??'')==='')out(['error'=>'Nome do barbeiro é obrigatório.'],422);
-        $q=$p->prepare("INSERT INTO barbers(name,specialty,rating,active) VALUES(?,?,?,?) RETURNING id,name,specialty,rating,active");
-        $q->execute([trim($x['name']),trim($x['specialty']??''),(float)($x['rating']??5),!empty($x['active'])]);
-        out($q->fetch(),201);
+    if($path==='/api/availability' && $method==='GET') {
+        $bid=(int)($_GET['barber_id']??0);$date=trim((string)($_GET['date']??''));if($bid<=0||$date==='')out(['error'=>'barber_id e date são obrigatórios'],422);
+        $q=db()->prepare("SELECT a.id,a.appointment_date AS date,a.appointment_time AS time,a.barber_id,b.name AS barber_name,c.name AS customer_name,c.phone AS customer_phone,s.name AS service_name,a.status FROM appointments a JOIN barbers b ON b.id=a.barber_id JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? AND a.status IN ('pending','confirmed') ORDER BY a.appointment_time");$q->execute([$bid,$date]);out(['appointments'=>$q->fetchAll()]);
     }
+    if($path==='/api/admin/login' && $method==='POST') { $d=body();$configured=getenv('ADMIN_PASSWORD')?:'studioaa123';if(!hash_equals($configured,(string)($d['password']??'')))out(['error'=>'Senha incorreta'],401);out(['ok'=>true]); }
 
-    if(preg_match('#^/api/barbers/(\d+)$#',$path,$m) && $_SERVER['REQUEST_METHOD']==='PUT'){
-        $x=body();
-        $q=$p->prepare("UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id,name,specialty,rating,active");
-        $q->execute([trim($x['name']??''),trim($x['specialty']??''),(float)($x['rating']??5),!empty($x['active']),(int)$m[1]]);
-        $r=$q->fetch();
-        if(!$r)out(['error'=>'Barbeiro não encontrado.'],404);
-        out($r);
+    // Painel: barbers - aceita POST e PUT, sem exigir senha no backend para compatibilidade
+    if($path==='/api/admin/barbers' && $method==='GET') out(db()->query("SELECT id,name,specialty,rating,active FROM barbers ORDER BY name,id")->fetchAll());
+    if($path==='/api/admin/barbers' && in_array($method,['POST','PUT'],true)) {
+        $d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));if($name==='')out(['error'=>'Nome do barbeiro é obrigatório'],422);
+        $spec=(string)($d['specialty']??'');$rating=(float)($d['rating']??5);$active=array_key_exists('active',$d)?boolv($d['active']):true;$p=db();
+        if($id>0){$q=$p->prepare('UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id');$q->execute([$name,$spec,$rating,$active,$id]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);}else{$q=$p->prepare('INSERT INTO barbers(name,specialty,rating,active) VALUES(?,?,?,?) RETURNING id');$q->execute([$name,$spec,$rating,$active]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
     }
+    if(preg_match('#^/api/barbers/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$d['id']=(int)$m[1];$_POST=[]; $name=trim((string)($d['name']??''));if($name==='')out(['error'=>'Nome do barbeiro é obrigatório'],422);$p=db();$q=$p->prepare('UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id');$q->execute([$name,(string)($d['specialty']??''),(float)($d['rating']??5),array_key_exists('active',$d)?boolv($d['active']):true,(int)$m[1]]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]); }
 
-    if($path==='/api/services' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body();
-        if(trim($x['name']??'')==='')out(['error'=>'Nome do serviço é obrigatório.'],422);
-        $q=$p->prepare("INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,?,COALESCE((SELECT MAX(sort_order)+1 FROM services),1)) RETURNING id,name,duration,price,active");
-        $q->execute([trim($x['name']),(int)($x['duration']??30),(float)($x['price']??0),!empty($x['active'])]);
-        out($q->fetch(),201);
+    // Painel: services
+    if($path==='/api/admin/services' && $method==='GET') out(db()->query('SELECT id,name,duration,price,active,sort_order FROM services ORDER BY sort_order,id')->fetchAll());
+    if($path==='/api/admin/services' && in_array($method,['POST','PUT'],true)){
+        $d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));$duration=(int)($d['duration']??0);$price=(float)($d['price']??0);if($name===''||$duration<=0)out(['error'=>'Nome e duração são obrigatórios'],422);$active=array_key_exists('active',$d)?boolv($d['active']):true;$sort=(int)($d['sort_order']??0);$p=db();
+        if($id>0){$q=$p->prepare('UPDATE services SET name=?,duration=?,price=?,active=?,sort_order=? WHERE id=? RETURNING id');$q->execute([$name,$duration,$price,$active,$sort,$id]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);}else{$q=$p->prepare('INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,?,?) RETURNING id');$q->execute([$name,$duration,$price,$active,$sort]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
     }
+    if(preg_match('#^/api/services/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$p=db();$q=$p->prepare('UPDATE services SET name=?,duration=?,price=?,active=? WHERE id=? RETURNING id');$q->execute([trim((string)($d['name']??'')),(int)($d['duration']??0),(float)($d['price']??0),array_key_exists('active',$d)?boolv($d['active']):true,(int)$m[1]]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]);}
 
-    if(preg_match('#^/api/services/(\d+)$#',$path,$m) && $_SERVER['REQUEST_METHOD']==='PUT'){
-        $x=body();
-        $q=$p->prepare("UPDATE services SET name=?,duration=?,price=?,active=? WHERE id=? RETURNING id,name,duration,price,active");
-        $q->execute([trim($x['name']??''),(int)($x['duration']??30),(float)($x['price']??0),!empty($x['active']),(int)$m[1]]);
-        $r=$q->fetch();
-        if(!$r)out(['error'=>'Serviço não encontrado.'],404);
-        out($r);
-    }
-
-    if($path==='/api/schedules' && $_SERVER['REQUEST_METHOD']==='GET'){
-        $id=(int)($_GET['barber_id']??0);
-        $q=$p->prepare("SELECT day_of_week,start_time::text,end_time::text,break_start::text,break_end::text,active FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
-        $q->execute([$id]);
-        out($q->fetchAll());
-    }
-
-    if($path==='/api/schedules' && $_SERVER['REQUEST_METHOD']==='PUT'){
-        $x=body(); $id=(int)($x['barber_id']??0);
-        if(!$id)out(['error'=>'Barbeiro inválido.'],422);
-        $items=$x['schedules'] ?? [];
-        if(!is_array($items)) $items=[];
-        $p->beginTransaction();
-        try{
-            $q=$p->prepare("DELETE FROM studio_aa_schedules WHERE barber_id=?");$q->execute([$id]);
-            foreach($items as $r){
-                $day=(int)($r['day_of_week'] ?? $r['weekday'] ?? 0);
-                $start=timeOrNull($r['start_time'] ?? $r['open_time'] ?? null);
-                $end=timeOrNull($r['end_time'] ?? $r['close_time'] ?? null);
-                $bs=timeOrNull($r['break_start'] ?? null);
-                $be=timeOrNull($r['break_end'] ?? null);
-                $active=boolValue($r['active'] ?? false);
-                $activeSql=$active ? 'TRUE' : 'FALSE';
-                $q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,$activeSql)");
-                $q->execute([$id,$day,$start,$end,$bs,$be]);
-            }
-            $p->commit(); out(['ok'=>true]);
-        }catch(Throwable $e){$p->rollBack();throw $e;}
-    }
-
-    // Compatibilidade com a tela de gerenciamento que usa /api/admin/schedule.
-    if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='GET'){
-        $id=(int)($_GET['barber_id']??0);
-        $q=$p->prepare("SELECT day_of_week AS weekday,start_time::text AS open_time,end_time::text AS close_time,break_start::text AS break_start,break_end::text AS break_end,active FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
-        $q->execute([$id]);
-        $rows=$q->fetchAll();
-        $by=[]; foreach($rows as $r) $by[(int)$r['weekday']]=$r;
-        $out=[];
-        for($i=0;$i<7;$i++) $out[]=$by[$i] ?? ['weekday'=>$i,'open_time'=>'09:00','close_time'=>'18:00','break_start'=>'12:30','break_end'=>'14:00','active'=>false];
-        out(['schedule'=>$out]);
-    }
-
-    if($path==='/api/admin/schedule' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body(); $id=(int)($x['barber_id']??0);
-        if(!$id)out(['error'=>'Barbeiro inválido.'],422);
-        $items=$x['schedule'] ?? [];
-        if(!is_array($items)) $items=[];
-        $p->beginTransaction();
-        try{
-            $q=$p->prepare("DELETE FROM studio_aa_schedules WHERE barber_id=?");$q->execute([$id]);
-            foreach($items as $r){
-                $day=(int)($r['day_of_week'] ?? $r['weekday'] ?? 0);
-                $start=timeOrNull($r['start_time'] ?? $r['open_time'] ?? null);
-                $end=timeOrNull($r['end_time'] ?? $r['close_time'] ?? null);
-                $bs=timeOrNull($r['break_start'] ?? null);
-                $be=timeOrNull($r['break_end'] ?? null);
-                $active=boolValue($r['active'] ?? false);
-                $activeSql=$active ? 'TRUE' : 'FALSE';
-                $q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,$activeSql)");
-                $q->execute([$id,$day,$start,$end,$bs,$be]);
-            }
-            $p->commit(); out(['ok'=>true]);
-        }catch(Throwable $e){$p->rollBack();throw $e;}
-    }
-
-    if($path==='/api/availability' && $_SERVER['REQUEST_METHOD']==='GET'){
-        $id=(int)($_GET['barber_id']??0);$date=trim((string)($_GET['date']??''));
-        if(!$id||!$date)out(['error'=>'barber_id e date são obrigatórios'],422);
-        $q=$p->prepare("SELECT a.id,
-                TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,
-                TO_CHAR(a.appointment_time,'HH24:MI') AS time,
-                a.barber_id,a.status
-            FROM appointments a
-            WHERE a.barber_id=? AND a.appointment_date=?
-              AND a.status IN ('pending','confirmed')
-            ORDER BY a.appointment_time");
-        $q->execute([$id,$date]);
-        $rows=$q->fetchAll();
-        foreach($rows as &$r)$r['status']=mapStatusToUi($r['status']);
-        out($rows);
-    }
-
-    if($path==='/api/admin/barbers' && $_SERVER['REQUEST_METHOD']==='GET'){
-        out($p->query("SELECT id,name,specialty,rating,active FROM barbers ORDER BY id")->fetchAll());
-    }
-    if($path==='/api/admin/barbers' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body(); $id=(int)($x['id']??0);
-        if($id){
-            $old=$p->prepare("SELECT active FROM barbers WHERE id=?");$old->execute([$id]);$oldActive=$old->fetchColumn();
-            $active=array_key_exists('active',$x) ? boolValue($x['active']) : (bool)$oldActive;
-            $q=$p->prepare("UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id,name,specialty,rating,active");
-            $q->execute([trim($x['name']??''),trim($x['specialty']??''),(float)($x['rating']??5),$active,$id]);
-        }else{
-            $q=$p->prepare("INSERT INTO barbers(name,specialty,rating,active) VALUES(?,?,?,?) RETURNING id,name,specialty,rating,active");
-            $q->execute([trim($x['name']??''),trim($x['specialty']??''),(float)($x['rating']??5),boolValue($x['active']??true)]);
-        }
-        $r=$q->fetch(); if(!$r)out(['error'=>'Barbeiro não encontrado.'],404); out($r);
-    }
-    if($path==='/api/admin/services' && $_SERVER['REQUEST_METHOD']==='GET'){
-        out($p->query("SELECT id,name,duration,price,active FROM services ORDER BY sort_order,id")->fetchAll());
-    }
-    if($path==='/api/admin/services' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body(); $id=(int)($x['id']??0);
-        if($id){
-            $old=$p->prepare("SELECT active FROM services WHERE id=?");$old->execute([$id]);$oldActive=$old->fetchColumn();
-            $active=array_key_exists('active',$x) ? boolValue($x['active']) : (bool)$oldActive;
-            $q=$p->prepare("UPDATE services SET name=?,duration=?,price=?,active=? WHERE id=? RETURNING id,name,duration,price,active");
-            $q->execute([trim($x['name']??''),(int)($x['duration']??30),(float)($x['price']??0),$active,$id]);
-        }else{
-            $q=$p->prepare("INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,?,COALESCE((SELECT MAX(sort_order)+1 FROM services),1)) RETURNING id,name,duration,price,active");
-            $q->execute([trim($x['name']??''),(int)($x['duration']??30),(float)($x['price']??0),boolValue($x['active']??true)]);
-        }
-        $r=$q->fetch(); if(!$r)out(['error'=>'Serviço não encontrado.'],404); out($r);
-    }
-
-    if($path==='/api/appointments' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body();
-        foreach(['service_id','barber_id','customer_name','customer_phone','date','time'] as $k)
-            if(empty($x[$k]))out(['error'=>"Campo obrigatório: {$k}"],422);
-        $p->beginTransaction();
-        try{
-            $lock=sprintf('%u',crc32((string)((int)$x['barber_id'].'|'.$x['date'].'|'.$x['time'])));
-            $p->prepare("SELECT pg_advisory_xact_lock(CAST(? AS bigint))")->execute([$lock]);
-
-            $q=$p->prepare("SELECT COUNT(*) FROM appointments WHERE barber_id=? AND appointment_date=? AND appointment_time=? AND status IN ('pending','confirmed')");
-            $q->execute([(int)$x['barber_id'],$x['date'],$x['time']]);
-            if((int)$q->fetchColumn()>0){$p->rollBack();out(['error'=>'Horário já ocupado'],409);}
-
-            $q=$p->prepare("SELECT id FROM customers WHERE phone=?");$q->execute([$x['customer_phone']]);
-            $c=$q->fetch();
-            if($c){$cid=(int)$c['id'];$p->prepare("UPDATE customers SET name=? WHERE id=?")->execute([$x['customer_name'],$cid]);}
-            else{$q=$p->prepare("INSERT INTO customers(name,phone) VALUES(?,?) RETURNING id");$q->execute([$x['customer_name'],$x['customer_phone']]);$cid=(int)$q->fetchColumn();}
-
-            $q=$p->prepare("INSERT INTO appointments(customer_id,service_id,barber_id,appointment_date,appointment_time,status) VALUES(?,?,?,?,?,'pending') RETURNING id");
-            $q->execute([$cid,(int)$x['service_id'],(int)$x['barber_id'],$x['date'],$x['time']]);
-            $id=(int)$q->fetchColumn();$p->commit();
-            out(['id'=>$id,'status'=>'Pendente'],201);
+    // Horários: tabela isolada e payload flexível
+    if(($path==='/api/admin/schedule'||$path==='/api/schedules') && $method==='GET'){ $bid=(int)($_GET['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);out(getSchedule(db(),$bid)); }
+    if(($path==='/api/admin/schedule'||$path==='/api/schedules') && in_array($method,['POST','PUT'],true)){
+        $d=body();$bid=(int)($d['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);$rows=$d['schedule']??$d['schedules']??$d['days']??null;if(!is_array($rows))out(['error'=>'Horários inválidos'],422);$p=db();$p->beginTransaction();try{
+            $del=$p->prepare('DELETE FROM studio_aa_schedules WHERE barber_id=?');$del->execute([$bid]);
+            foreach($rows as $key=>$r){if(!is_array($r))continue;$day=(int)($r['weekday']??$r['day_of_week']??$r['day']??$key);if($day<0||$day>6)continue;$active=array_key_exists('active',$r)?boolv($r['active']):(array_key_exists('open',$r)?boolv($r['open']):true);$start=timev($r['start_time']??$r['start']??$r['open_time']??'');$end=timev($r['end_time']??$r['end']??$r['close_time']??'');$bs=timev($r['break_start']??$r['pause_start']??$r['interval_start']??'');$be=timev($r['break_end']??$r['pause_end']??$r['interval_end']??'');$as=$active?'TRUE':'FALSE';$q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,$as)");$q->execute([$bid,$day,$start,$end,$bs,$be]);}
+            $p->commit();out(['ok'=>true,'barber_id'=>$bid,'schedule'=>getSchedule($p,$bid)]);
         }catch(Throwable $e){if($p->inTransaction())$p->rollBack();throw $e;}
     }
 
-    if(preg_match('#^/api/appointments/(\d+)$#',$path,$m) && $_SERVER['REQUEST_METHOD']==='PATCH'){
-        $x=body();$status=mapStatusToDb((string)($x['status']??'Cancelado'));
-        $q=$p->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id,status");
-        $q->execute([$status,(int)$m[1]]);
-        $r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);
-        $r['status']=mapStatusToUi($r['status']);out($r);
+    if($path==='/api/admin/dashboard' && $method==='GET'){
+        $p=db();$appointments=$p->query("SELECT a.id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,a.status,c.name AS customer_name,c.phone AS customer_phone,b.name AS barber_name,s.name AS service_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN barbers b ON b.id=a.barber_id JOIN services s ON s.id=a.service_id ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC")->fetchAll();$stats=['today'=>(int)$p->query("SELECT COUNT(*) FROM appointments WHERE appointment_date=CURRENT_DATE AND status IN ('pending','confirmed')")->fetchColumn(),'clients'=>(int)$p->query('SELECT COUNT(*) FROM customers')->fetchColumn(),'barbers'=>(int)$p->query('SELECT COUNT(*) FROM barbers WHERE active=TRUE')->fetchColumn(),'services'=>(int)$p->query('SELECT COUNT(*) FROM services WHERE active=TRUE')->fetchColumn()];out(['stats'=>$stats]+$stats+['appointments'=>$appointments]);
     }
-
-    if($path==='/api/admin/cancel' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body(); $q=$p->prepare("UPDATE appointments SET status='cancelled' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Cancelado';out($r);
-    }
-    if($path==='/api/admin/reactivate' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body(); $q=$p->prepare("UPDATE appointments SET status='pending' WHERE id=? RETURNING id,status");$q->execute([(int)($x['id']??0)]);$r=$q->fetch();if(!$r)out(['error'=>'Agendamento não encontrado.'],404);$r['status']='Pendente';out($r);
-    }
-
-    if($path==='/api/admin/status' && $_SERVER['REQUEST_METHOD']==='POST'){
-        $x=body(); $id=(int)($x['id']??0); $status=mapStatusToDb((string)($x['status']??'pending'));
-        $q=$p->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id,status");
-        $q->execute([$status,$id]); $r=$q->fetch();
-        if(!$r) out(['error'=>'Agendamento não encontrado.'],404);
-        $r['status']=mapStatusToUi($r['status']); out($r);
-    }
-
-    if($path==='/api/admin/dashboard' && $_SERVER['REQUEST_METHOD']==='GET'){
-        $today=(int)$p->query("SELECT COUNT(*) FROM appointments WHERE appointment_date=CURRENT_DATE AND status IN ('pending','confirmed')")->fetchColumn();
-        $clients=(int)$p->query("SELECT COUNT(*) FROM customers")->fetchColumn();
-        $barbers=(int)$p->query("SELECT COUNT(*) FROM barbers WHERE active=TRUE")->fetchColumn();
-        $services=(int)$p->query("SELECT COUNT(*) FROM services WHERE active=TRUE")->fetchColumn();
-
-        $rows=$p->query("SELECT a.id,
-                TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,
-                TO_CHAR(a.appointment_time,'HH24:MI') AS time,
-                a.status,c.name AS customer_name,c.phone AS customer_phone,
-                b.name AS barber_name,b.id AS barber_id,s.name AS service_name
-            FROM appointments a
-            JOIN customers c ON c.id=a.customer_id
-            JOIN barbers b ON b.id=a.barber_id
-            JOIN services s ON s.id=a.service_id
-            ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC")->fetchAll();
-        foreach($rows as &$r)$r['status']=mapStatusToUi($r['status']);
-
-        out(['today'=>$today,'clients'=>$clients,'barbers'=>$barbers,'services'=>$services,'stats'=>['today'=>$today,'clients'=>$clients,'barbers'=>$barbers,'services'=>$services],'appointments'=>$rows]);
-    }
-
+    if(($path==='/api/admin/cancel'||$path==='/api/admin/reactivate') && $method==='POST'){$d=body();$id=(int)($d['id']??0);if($id<=0)out(['error'=>'ID inválido'],422);$status=$path==='/api/admin/cancel'?'cancelled':'pending';$q=db()->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id");$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
+    if($path==='/api/admin/status' && $method==='POST'){$d=body();$id=(int)($d['id']??0);$status=(string)($d['status']??'');if($id<=0||!in_array($status,['pending','confirmed','cancelled','completed'],true))out(['error'=>'Status inválido'],422);$q=db()->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
     out(['error'=>'Rota não encontrada'],404);
-}catch(Throwable $e){
-    out(['error'=>$e->getMessage()],500);
-}
-?>
+}catch(Throwable $e){out(['error'=>'Erro interno','detail'=>$e->getMessage()],500);}
