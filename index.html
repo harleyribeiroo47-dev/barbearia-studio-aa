@@ -31,7 +31,7 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .notice{margin-top:12px;padding:12px;border-radius:12px;background:#151515;border:1px solid #2b2b2b;color:#aaa;font-size:13px}.notice.ok{border-color:#245a34;color:#bde8c7}.notice.err{border-color:#642b2b;color:#ffc0c0}
 .admin{display:none;margin-top:22px;padding:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}.table .item{background:#111}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
 @media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:300px;height:300px;padding:20px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
-.agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
+.agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.agendaActions .btn{padding:7px 9px;font-size:10px}.btn.confirm{border-color:#245b36;color:#7ee787}.btn.complete{border-color:#24506b;color:#7dd3fc}.btn.reactivate{border-color:#6b531d;color:#f0c85a}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
 </style>
 </head>
 <body>
@@ -287,13 +287,33 @@ async function loadDashboard(){
     const status=String(a.status||"pending").toLowerCase();
     const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído",cancelled:"Cancelado"}[status]||status;
     const cancelled=status==="cancelled";
-    return `<div class="item"><span><strong>#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")}</span></span><span style="display:flex;align-items:center;gap:8px"><span class="price">${esc(label)}</span>${cancelled?"":`<button class="btn danger" style="padding:8px 10px" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`}</span></div>`;
+    return `<div class="item"><span><strong>#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")}</span></span><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="price">${esc(label)}</span>${statusActions(a)}</span></div>`;
    }).join(""):
    '<div class="item"><span class="muted">Nenhum agendamento encontrado.</span></div>';
  }catch(e){
   if(e.message.includes("401")){adminLogout();alert("Sua sessão administrativa expirou. Entre novamente.");return;}
   document.querySelector("#appointments").innerHTML='<div class="item"><span class="muted">Não foi possível carregar os agendamentos do servidor.</span></div>';
  }
+}
+
+function statusActions(a){
+ const status=String(a.status||"pending").toLowerCase();
+ if(status==="cancelled") return `<button class="btn reactivate" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'pending')">REATIVAR</button>`;
+ if(status==="pending") return `<button class="btn confirm" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'confirmed')">CONFIRMAR</button><button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
+ if(status==="confirmed") return `<button class="btn complete" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'completed')">CONCLUÍDO</button><button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
+ if(status==="completed") return `<span class="muted">Atendimento finalizado</span>`;
+ return `<button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
+}
+
+async function changeAppointmentStatus(id,status){
+ if(!adminPassword)return;
+ const labels={confirmed:"confirmar",completed:"marcar como concluído",pending:"reativar"};
+ if(!confirm(`Deseja ${labels[status]||"alterar o status de"} o agendamento #${id}?`))return;
+ try{
+  await api("/api/admin/status",{method:"POST",headers:{"X-Admin-Password":adminPassword},body:JSON.stringify({id,status})});
+  await loadDashboard();
+  await loadBookedAppointments();
+ }catch(e){alert("Não foi possível alterar o status do agendamento.");}
 }
 
 function renderAgenda(){
@@ -315,7 +335,7 @@ function renderAgenda(){
   if(!a)return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaFree">Horário livre</div></div></div>`;
   const status=String(a.status||"pending").toLowerCase();
   const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído"}[status]||status;
-  return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaClient">#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</div><div class="agendaMeta">${esc(a.service_name||"Serviço")} • ${esc(a.barber_name||"Barbeiro")}</div><div class="agendaMeta">${esc(a.customer_phone||"")}</div><span class="status ${esc(status)}">${esc(label)}</span></div></div>`;
+  return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaClient">#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</div><div class="agendaMeta">${esc(a.service_name||"Serviço")} • ${esc(a.barber_name||"Barbeiro")}</div><div class="agendaMeta">${esc(a.customer_phone||"")}</div><span class="status ${esc(status)}">${esc(label)}</span><div class="agendaActions">${statusActions(a)}</div></div></div>`;
  }).join("");
  box.innerHTML=`<div class="agendaHeader"><span class="agendaDay">${esc(labelDate)}</span><span class="muted">${active.length} atendimento(s)</span></div><div class="agendaGrid">${slots}</div>`;
 }
