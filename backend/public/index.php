@@ -4,7 +4,7 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, X-Admin-Password, Authorization');
-header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, OPTIONS');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 function out($data, int $status=200): void { http_response_code($status); echo json_encode($data, JSON_UNESCAPED_UNICODE); exit; }
@@ -61,7 +61,7 @@ try {
     }
     if($path==='/api/availability' && $method==='GET') {
         $bid=(int)($_GET['barber_id']??0);$date=trim((string)($_GET['date']??''));if($bid<=0||$date==='')out(['error'=>'barber_id e date são obrigatórios'],422);
-        $q=db()->prepare("SELECT a.id,a.appointment_date AS date,a.appointment_time AS time,a.barber_id,b.name AS barber_name,c.name AS customer_name,c.phone AS customer_phone,s.name AS service_name,a.status FROM appointments a JOIN barbers b ON b.id=a.barber_id JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? AND a.status IN ('pending','confirmed') ORDER BY a.appointment_time");$q->execute([$bid,$date]);out(['appointments'=>$q->fetchAll()]);
+        $q=db()->prepare("SELECT a.id,a.appointment_date AS date,a.appointment_time AS time,a.barber_id,b.name AS barber_name,c.name AS customer_name,c.phone AS customer_phone,s.name AS service_name,a.status FROM appointments a JOIN barbers b ON b.id=a.barber_id JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? AND a.status IN ('pending','confirmed') ORDER BY a.appointment_time");$q->execute([$bid,$date]);out($q->fetchAll());
     }
     if($path==='/api/admin/login' && $method==='POST') { $d=body();$configured=getenv('ADMIN_PASSWORD')?:'studioaa123';if(!hash_equals($configured,(string)($d['password']??'')))out(['error'=>'Senha incorreta'],401);out(['ok'=>true]); }
 
@@ -72,7 +72,7 @@ try {
         $spec=(string)($d['specialty']??'');$rating=(float)($d['rating']??5);$active=array_key_exists('active',$d)?boolv($d['active']):true;$p=db();
         if($id>0){$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("UPDATE barbers SET name=?,specialty=?,rating=? ,active=$activeSql WHERE id=? RETURNING id");$q->execute([$name,$spec,$rating,$id]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);}else{$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("INSERT INTO barbers(name,specialty,rating,active) VALUES(?,?,?,$activeSql) RETURNING id");$q->execute([$name,$spec,$rating]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
     }
-    if(preg_match('#^/api/barbers/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$d['id']=(int)$m[1];$_POST=[]; $name=trim((string)($d['name']??''));if($name==='')out(['error'=>'Nome do barbeiro é obrigatório'],422);$p=db();$q=$p->prepare('UPDATE barbers SET name=?,specialty=?,rating=?,active=? WHERE id=? RETURNING id');$q->execute([$name,(string)($d['specialty']??''),(float)($d['rating']??5),array_key_exists('active',$d)?boolv($d['active']):true,(int)$m[1]]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]); }
+    if(preg_match('#^/api/barbers/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$name=trim((string)($d['name']??''));if($name==='')out(['error'=>'Nome do barbeiro é obrigatório'],422);$active=array_key_exists('active',$d)?boolv($d['active']):true;$activeSql=$active?'TRUE':'FALSE';$p=db();$q=$p->prepare("UPDATE barbers SET name=?,specialty=?,rating=?,active=$activeSql WHERE id=? RETURNING id");$q->execute([$name,(string)($d['specialty']??''),(float)($d['rating']??5),(int)$m[1]]);if(!$q->fetch())out(['error'=>'Barbeiro não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]); }
 
     // Painel: services
     if($path==='/api/admin/services' && $method==='GET') out(db()->query('SELECT id,name,duration,price,active,sort_order FROM services ORDER BY sort_order,id')->fetchAll());
@@ -80,10 +80,10 @@ try {
         $d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));$duration=(int)($d['duration']??0);$price=(float)($d['price']??0);if($name===''||$duration<=0)out(['error'=>'Nome e duração são obrigatórios'],422);$active=array_key_exists('active',$d)?boolv($d['active']):true;$sort=(int)($d['sort_order']??0);$p=db();
         if($id>0){$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("UPDATE services SET name=?,duration=?,price=?,active=$activeSql,sort_order=? WHERE id=? RETURNING id");$q->execute([$name,$duration,$price,$sort,$id]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);}else{$activeSql=$active?'TRUE':'FALSE';$q=$p->prepare("INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,$activeSql,?) RETURNING id");$q->execute([$name,$duration,$price,$sort]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);
     }
-    if(preg_match('#^/api/services/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$p=db();$q=$p->prepare('UPDATE services SET name=?,duration=?,price=?,active=? WHERE id=? RETURNING id');$q->execute([trim((string)($d['name']??'')),(int)($d['duration']??0),(float)($d['price']??0),array_key_exists('active',$d)?boolv($d['active']):true,(int)$m[1]]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]);}
+    if(preg_match('#^/api/services/(\d+)$#',$path,$m) && $method==='PUT'){ $d=body();$name=trim((string)($d['name']??''));$duration=(int)($d['duration']??0);$price=(float)($d['price']??0);if($name===''||$duration<=0)out(['error'=>'Nome e duração são obrigatórios'],422);$active=array_key_exists('active',$d)?boolv($d['active']):true;$activeSql=$active?'TRUE':'FALSE';$p=db();$q=$p->prepare("UPDATE services SET name=?,duration=?,price=?,active=$activeSql WHERE id=? RETURNING id");$q->execute([$name,$duration,$price,(int)$m[1]]);if(!$q->fetch())out(['error'=>'Serviço não encontrado'],404);out(['ok'=>true,'id'=>(int)$m[1]]);}
 
     // Horários: tabela isolada, payload flexível e sem bind de boolean/time problemático
-    if(($path==='/api/admin/schedule'||$path==='/api/schedules') && $method==='GET'){ $bid=(int)($_GET['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);out(['schedule'=>getSchedule(db(),$bid)]); }
+    if(($path==='/api/admin/schedule'||$path==='/api/schedules') && $method==='GET'){ $bid=(int)($_GET['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);$rows=getSchedule(db(),$bid);if($path==='/api/schedules')out(array_map(function($r){return ['day_of_week'=>(int)$r['day_of_week'],'active'=>(bool)$r['active'],'start_time'=>$r['start_time'],'end_time'=>$r['end_time'],'break_start'=>$r['break_start'],'break_end'=>$r['break_end']];},$rows));out(['schedule'=>$rows]); }
     if(($path==='/api/admin/schedule'||$path==='/api/schedules') && in_array($method,['POST','PUT'],true)){
         $d=body();$bid=(int)($d['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);$rows=$d['schedule']??$d['schedules']??$d['days']??null;if(!is_array($rows))out(['error'=>'Horários inválidos'],422);$p=db();
         $p->beginTransaction();
@@ -101,6 +101,17 @@ try {
             }
             $p->commit(); out(['ok'=>true,'barber_id'=>$bid,'schedule'=>getSchedule($p,$bid)]);
         }catch(Throwable $e){if($p->inTransaction())$p->rollBack();throw $e;}
+    }
+
+
+    if(preg_match('#^/api/appointments/(\d+)$#',$path,$m) && $method==='PATCH'){
+        $d=body(); $status=(string)($d['status']??'');
+        $map=['pending'=>'pending','confirmado'=>'confirmed','confirmed'=>'confirmed','cancelado'=>'cancelled','cancelled'=>'cancelled','concluido'=>'completed','concluído'=>'completed','completed'=>'completed'];
+        $status=$map[strtolower(trim($status))]??'';
+        if($status==='')out(['error'=>'Status inválido'],422);
+        $q=db()->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,(int)$m[1]]);
+        if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);
+        out(['ok'=>true,'id'=>(int)$m[1],'status'=>$status]);
     }
 
     if($path==='/api/admin/dashboard' && $method==='GET'){
