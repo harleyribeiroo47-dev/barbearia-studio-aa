@@ -34,6 +34,18 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div></div></section>
 <div class="footer">BARBEARIA STUDIO A.A • ESTILO • RESPEITO • ATITUDE</div></main>
 <script>
+function parseAvailability(data){
+  if(Array.isArray(data)) return {appointments:[], available_times:data};
+  if(data && typeof data==="object"){
+    return {
+      appointments:Array.isArray(data.appointments)?data.appointments:[],
+      available_times:Array.isArray(data.available_times)?data.available_times:
+        (Array.isArray(data.availableTimes)?data.availableTimes:[])
+    };
+  }
+  return {appointments:[], available_times:[]};
+}
+
 const API="https://studio-aa-api.onrender.com",times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
 let services=[],barbers=[],chosenTime="",booked=[];
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
@@ -81,4 +93,13 @@ async function loadScheduleEditor(){try{const rows=await api("/api/schedules?bar
 async function saveSchedule(){const rows=[];for(let i=0;i<7;i++)rows.push({day_of_week:i,active:document.querySelector("#act"+i).checked,start_time:document.querySelector("#st"+i).value,end_time:document.querySelector("#en"+i).value,break_start:document.querySelector("#bs"+i).value,break_end:document.querySelector("#be"+i).value});try{await api("/api/schedules",{method:"PUT",body:JSON.stringify({barber_id:+scheduleBarber.value,schedules:rows})});manageMsg.innerHTML='<div class="notice ok">Horários salvos.</div>'}catch(e){manageMsg.innerHTML=`<div class="notice err">${esc(e.message)}</div>`}}
 date.min=new Date().toISOString().slice(0,10);date.addEventListener("change",refreshAvailability);barber.addEventListener("change",refreshAvailability);agendaDate.addEventListener("change",loadDashboard);agendaBarber.addEventListener("change",loadDashboard);
 async function boot(){try{services=await api("/api/services");barbers=await api("/api/barbers")}catch{services=[{id:1,name:"Corte Masculino",duration:30,price:35,active:true}];barbers=[{id:1,name:"Lucas",specialty:"Especialista em degradê",rating:4.9,active:true}]}render()}boot();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
+
+document.addEventListener("DOMContentLoaded",()=>{
+  const dateEl=document.getElementById("date");
+  const barberEl=document.getElementById("barber");
+  const serviceEl=document.getElementById("service");
+  if(dateEl) dateEl.addEventListener("change",()=>typeof loadAvailability==="function"&&loadAvailability());
+  if(barberEl) barberEl.addEventListener("change",()=>typeof loadAvailability==="function"&&loadAvailability());
+  if(serviceEl) serviceEl.addEventListener("change",()=>typeof loadAvailability==="function"&&loadAvailability());
+});
 </script></body></html>
