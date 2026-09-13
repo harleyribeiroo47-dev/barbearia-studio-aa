@@ -49,7 +49,25 @@ async function confirmBooking(){const p={service_id:+service.value,barber_id:+ba
 function openAdmin(){admin.style.display="block";admin.scrollIntoView({behavior:"smooth"})}
 function adminLogin(){if(adminPass.value==="studioaa123"){loginBox.style.display="none";dashboard.style.display="block";agendaDate.value=new Date().toISOString().slice(0,10);loadManagement();loadDashboard()}else alert("Senha incorreta.")}
 function adminLogout(){dashboard.style.display="none";loginBox.style.display="block";adminPass.value=""}
-async function loadDashboard(){try{const d=await api("/api/admin/dashboard");sToday.textContent=d.today??0;sClients.textContent=d.clients??0;sBarbers.textContent=d.barbers??0;sServices.textContent=d.services??0;let list=(d.appointments||[]).filter(a=>String(a.date).slice(0,10)==agendaDate.value&&(!agendaBarber.value||String(a.barber_id)==agendaBarber.value));appointments.innerHTML=list.length?list.map(a=>{const st=String(a.status||"").toLowerCase();const confirmBtn=st==="pending"?`<button class="btn small ok" onclick="updateAppointmentStatus(${a.id},'confirmed')">CONFIRMAR</button>`:"";const completeBtn=st==="confirmed"?`<button class="btn small ok" onclick="updateAppointmentStatus(${a.id},'completed')">CONCLUIR</button>`:"";const cancelBtn=st!=="cancelled"&&st!=="cancelado"&&st!=="completed"?`<button class="btn small danger" onclick="cancelAppointment(${a.id})">CANCELAR</button>`:"";return `<div class="item"><span><strong>#${a.id} — ${esc(a.customer_name)}</strong><span class="muted">${esc(a.time)} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")} • ${esc(a.customer_phone||"")}</span></span><span><b>${esc(a.status)}</b> ${confirmBtn} ${completeBtn} ${cancelBtn}</span></div>`}).join(""):'<div class="item"><span class="muted">Nenhum agendamento.</span></div>'}catch(e){appointments.innerHTML='<div class="item"><span class="muted">Erro ao carregar agenda.</span></div>'}}
+async function loadDashboard(){
+  const box=document.querySelector("#appointments");
+  box.innerHTML='<div class="item"><span class="muted">Atualizando agenda...</span></div>';
+  try{
+    const qs=new URLSearchParams();
+    if(agendaDate.value)qs.set("date",agendaDate.value);
+    if(agendaBarber.value)qs.set("barber_id",agendaBarber.value);
+    const d=await api("/api/admin/dashboard?"+qs.toString());
+    sToday.textContent=d.today??0;sClients.textContent=d.clients??0;sBarbers.textContent=d.barbers??0;sServices.textContent=d.services??0;
+    const list=d.appointments||[];
+    box.innerHTML=list.length?list.map(a=>{
+      const st=String(a.status||"").toLowerCase();
+      const confirmBtn=st==="pending"?`<button type="button" class="btn small ok" onclick="updateAppointmentStatus(${a.id},'confirmed')">CONFIRMAR</button>`:"";
+      const completeBtn=st==="confirmed"?`<button type="button" class="btn small ok" onclick="updateAppointmentStatus(${a.id},'completed')">CONCLUIR</button>`:"";
+      const cancelBtn=st!=="cancelled"&&st!=="cancelado"&&st!=="completed"?`<button type="button" class="btn small danger" onclick="cancelAppointment(${a.id})">CANCELAR</button>`:"";
+      return `<div class="item"><span><strong>#${a.id} — ${esc(a.customer_name)}</strong><span class="muted">${esc(a.time)} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")} • ${esc(a.customer_phone||"")}</span></span><span><b>${esc(a.status)}</b> ${confirmBtn} ${completeBtn} ${cancelBtn}</span></div>`
+    }).join(""):'<div class="item"><span class="muted">Nenhum agendamento para os filtros selecionados.</span></div>';
+  }catch(e){box.innerHTML=`<div class="item"><span class="muted">Erro ao atualizar agenda: ${esc(e.message)}</span></div>`}
+}
 async function updateAppointmentStatus(id,status){const labels={confirmed:"confirmar",completed:"concluir"};if(!confirm(`Deseja ${labels[status]||"alterar"} este agendamento?`))return;try{await api("/api/appointments/"+id,{method:"PATCH",body:JSON.stringify({status})});loadDashboard();refreshAvailability()}catch(e){alert(e.message)}}
 async function cancelAppointment(id){if(!confirm("Cancelar este agendamento?"))return;try{await api("/api/appointments/"+id,{method:"PATCH",body:JSON.stringify({status:"cancelled"})});loadDashboard();refreshAvailability()}catch(e){alert(e.message)}}
 function loadManagement(){renderBarberAdmin();renderServiceAdmin();scheduleBarber.innerHTML=barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");agendaBarber.innerHTML='<option value="">Todos os barbeiros</option>'+barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");loadScheduleEditor()}
