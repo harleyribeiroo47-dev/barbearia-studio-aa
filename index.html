@@ -34,6 +34,18 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.agendaActions .btn{padding:7px 9px;font-size:10px}.btn.confirm{border-color:#245b36;color:#7ee787}.btn.complete{border-color:#24506b;color:#7dd3fc}.btn.reactivate{border-color:#6b531d;color:#f0c85a}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
 
 .manageGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.manageCard{background:#111;border:1px solid #2b2b2b;border-radius:16px;padding:16px}.manageCard h3{margin:0 0 12px;font-size:14px;color:var(--gold)}.manageRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.manageRow.three{grid-template-columns:1fr 1fr 1fr}.manageRow.four{grid-template-columns:1.2fr .7fr .7fr .7fr}.smallBtn{padding:8px 10px;font-size:11px}.scheduleTable{width:100%;border-collapse:collapse;font-size:12px}.scheduleTable th,.scheduleTable td{padding:7px;border-bottom:1px solid #252525;text-align:left}.scheduleTable input,.scheduleTable select{width:100%;background:#090909;color:#fff;border:1px solid #333;border-radius:8px;padding:7px}.check{width:auto!important}.manageList{max-height:360px;overflow:auto}.manageItem{padding:10px 0;border-bottom:1px solid #252525}.manageItem:last-child{border-bottom:0}.manageActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}@media(max-width:780px){.manageGrid{grid-template-columns:1fr}.manageRow,.manageRow.three,.manageRow.four{grid-template-columns:1fr}}
+
+.galleryHero{margin-top:22px;padding:28px;border:1px solid #2b2415;border-radius:24px;background:linear-gradient(100deg,#101010 0%,#15120c 52%,#090909 100%);position:relative;overflow:hidden}
+.galleryHero:after{content:"";position:absolute;right:-80px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,#d6a82e22 0,transparent 68%);pointer-events:none}
+.galleryHero h2{margin:0;font-size:clamp(30px,5vw,54px);line-height:1}.galleryHero p{color:var(--muted);font-size:16px;margin:12px 0 0;max-width:720px}
+.galleryTools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:18px 0 12px}
+.galleryFilters{display:flex;gap:8px;flex-wrap:wrap}.galleryFilter{border:1px solid #333;background:#161616;color:#ddd;border-radius:999px;padding:9px 14px;font-weight:800;cursor:pointer}.galleryFilter.active{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#111;border-color:var(--gold)}
+.gallerySearch{min-width:220px;max-width:300px;flex:1;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:999px;padding:11px 15px;outline:none}
+.galleryGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.galleryCard{background:#0e0e0e;border:1px solid #2b2b2b;border-radius:17px;overflow:hidden;transition:.2s;box-shadow:0 10px 30px #0006}
+.galleryCard:hover{transform:translateY(-3px);border-color:#6a521f}.galleryPhoto{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}.galleryInfo{padding:13px}.galleryInfo strong{display:block;font-size:15px}.galleryInfo p{margin:5px 0 11px;color:#999;font-size:12px;min-height:30px}.galleryBook{width:100%;padding:10px 8px;font-size:12px}
+.galleryEmpty{padding:30px;text-align:center;color:#888;border:1px dashed #333;border-radius:16px;grid-column:1/-1}
+@media(max-width:900px){.galleryGrid{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.galleryGrid{grid-template-columns:repeat(2,1fr)}.gallerySearch{max-width:none}.galleryHero{padding:22px}}
 </style>
 </head>
 <body>
@@ -42,6 +54,19 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 <section class="hero card">
   <div class="heroMedia"><img src="logo-site.png" alt="BARBEARIA STUDIO A.A"></div>
   <div class="heroCopy"><div class="eyebrow">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário. Seu atendimento começa com um agendamento simples e profissional.</p><div class="actions"><button class="btn primary" onclick="showBooking()">AGENDAR AGORA</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div>
+</section>
+
+<section id="galeria" class="section">
+  <div class="galleryHero">
+    <div class="eyebrow gold">INSPIRAÇÃO PARA O SEU ESTILO</div>
+    <h2>GALERIA <span class="gold">DE CORTES</span></h2>
+    <p>Inspiração para o seu próximo visual. Escolha seu estilo e agende seu horário!</p>
+  </div>
+  <div class="galleryTools">
+    <div class="galleryFilters" id="galleryFilters"></div>
+    <input class="gallerySearch" id="gallerySearch" placeholder="🔎 Buscar corte..." autocomplete="off">
+  </div>
+  <div class="galleryGrid" id="galleryGrid"></div>
 </section>
 
 <section id="services" class="section"><div class="sectionTitle">SERVIÇOS</div><div class="card" id="serviceList"></div></section>
@@ -86,12 +111,36 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
     <div class="manageCard" style="margin-top:14px"><h3>HORÁRIOS DE ATENDIMENTO POR BARBEIRO</h3><div class="field"><label>Barbeiro</label><select id="scheduleBarber" onchange="loadScheduleEditor()"></select></div><div id="scheduleEditor" style="margin-top:12px"></div></div>
     <div class="sectionTitle" style="margin-top:20px">TODOS OS AGENDAMENTOS</div>
     <div class="table" id="appointments"></div>
-    <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div>
+    <div class="actions"><button class="btn danger" type="button" onclick="clearHistory()">LIMPAR HISTÓRICO</button><button class="btn danger" onclick="adminLogout()">SAIR</button></div>
   </div>
 </section>
 <div class="footer">BARBEARIA STUDIO A.A • ESTILO • RESPEITO • ATITUDE</div>
 </main>
 <script>
+const galleryItems=[
+ {name:"Degradê com Listra",cat:"Degradê",desc:"Visual marcante e moderno.",img:"galeria/degrade-com-listra.jpg"},
+ {name:"Social Moderno",cat:"Social",desc:"Discreto, elegante e atual.",img:"galeria/social-moderno.jpg"},
+ {name:"Degradê em V",cat:"Degradê",desc:"Personalidade em cada detalhe.",img:"galeria/degrade-em-v.jpg"},
+ {name:"Platinado",cat:"Tendências",desc:"Visual ousado e moderno.",img:"galeria/platinado.jpg"},
+ {name:"Moicano Disfarçado",cat:"Tendências",desc:"Estilo forte e atual.",img:"galeria/moicano-disfarcado.jpg"},
+ {name:"Corte com Barba",cat:"Barba",desc:"Estilo completo e alinhado.",img:"galeria/corte-com-barba.jpg"},
+ {name:"Corte Infantil",cat:"Infantil",desc:"Estilo e diversão para os pequenos.",img:"galeria/corte-infantil.jpg"},
+ {name:"Degradê Baixo",cat:"Degradê",desc:"Clássico, discreto e elegante.",img:"galeria/degrade-baixo.jpg"},
+ {name:"Barba Estilizada",cat:"Barba",desc:"Acabamento preciso e moderno.",img:"galeria/barba-estilizada.jpg"},
+ {name:"Cachos Modernos",cat:"Cacheado",desc:"Volume, definição e personalidade.",img:"galeria/cachos-modernos.jpg"},
+ {name:"Corte Texturizado",cat:"Texturizado",desc:"Movimento e estilo no visual.",img:"galeria/corte-texturizado.jpg"},
+ {name:"Corte Infantil Moderno",cat:"Infantil",desc:"Um visual moderno para os pequenos.",img:"galeria/corte-infantil-moderno.jpg"}
+];
+let galleryCat="Todos";
+function renderGallery(){
+ const q=(document.querySelector("#gallerySearch")?.value||"").trim().toLowerCase();
+ const cats=["Todos",...new Set(galleryItems.map(x=>x.cat))];
+ document.querySelector("#galleryFilters").innerHTML=cats.map(c=>`<button type="button" class="galleryFilter ${galleryCat===c?"active":""}" onclick="setGalleryCat('${esc(c)}')">${esc(c)}</button>`).join("");
+ const list=galleryItems.filter(x=>(galleryCat==="Todos"||x.cat===galleryCat)&&(!q||x.name.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q)));
+ document.querySelector("#galleryGrid").innerHTML=list.length?list.map(x=>`<article class="galleryCard"><img class="galleryPhoto" src="${x.img}" alt="${esc(x.name)}" loading="lazy"><div class="galleryInfo"><strong>${esc(x.name)}</strong><p>${esc(x.desc)}</p><button type="button" class="btn primary galleryBook" onclick="showBooking()">AGENDAR ESTE CORTE</button></div></article>`).join(""):'<div class="galleryEmpty">Nenhum corte encontrado.</div>';
+}
+function setGalleryCat(c){galleryCat=c;renderGallery()}
+
 const API = "https://studio-aa-api.onrender.com";// Ex.: https://seu-backend.onrender.com
 const fallbackServices=[
  {id:1,name:"Corte Masculino",duration:30,price:35},
@@ -447,6 +496,16 @@ async function saveSchedule(barberId){
  try{await api('/api/admin/schedule',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({barber_id:Number(barberId),schedule})});alert('Horários salvos.');}catch(e){alert('Não foi possível salvar os horários.');}
 }
 
+async function clearHistory(){
+ const ok=confirm("Deseja limpar o histórico? Serão apagados somente os agendamentos CANCELADOS e CONCLUÍDOS. Agendamentos pendentes ou confirmados não serão apagados.");
+ if(!ok)return;
+ try{
+   const r=await api("/api/admin/clear-history",{method:"POST",headers:{"X-Admin-Password":adminPassword}});
+   alert(`Histórico limpo. ${Number(r.deleted||0)} agendamento(s) removido(s).`);
+   await loadDashboard();
+ }catch(e){alert("Não foi possível limpar o histórico: "+e.message);}
+}
+
 function adminLogout(){
  adminPassword="";
  document.querySelector("#dashboard").style.display="none";
@@ -457,7 +516,8 @@ function adminLogout(){
 document.querySelector("#date").min=new Date().toISOString().slice(0,10);
 document.querySelector("#date").addEventListener("change",()=>{chosenTime="";scheduleRequestSeq++;availabilityRequestSeq++;publicSchedule=null;bookedAppointments=[];renderSlots();loadPublicSchedule();loadBookedAppointments()});
 document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";scheduleRequestSeq++;availabilityRequestSeq++;publicSchedule=null;bookedAppointments=[];renderSlots();loadPublicSchedule();loadBookedAppointments()});
-render();loadApi();
+document.querySelector("#gallerySearch")?.addEventListener("input",renderGallery);
+render();renderGallery();loadApi();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script>
 </body>
