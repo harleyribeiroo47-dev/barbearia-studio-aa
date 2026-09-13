@@ -85,7 +85,11 @@ try {
     }
     if($path==='/api/availability' && $method==='GET') {
         $bid=(int)($_GET['barber_id']??0);$date=trim((string)($_GET['date']??''));if($bid<=0||$date==='')out(['error'=>'barber_id e date são obrigatórios'],422);
-        $q=db()->prepare("SELECT a.id,a.appointment_date AS date,a.appointment_time AS time,a.barber_id,b.name AS barber_name,c.name AS customer_name,c.phone AS customer_phone,s.name AS service_name,a.status FROM appointments a JOIN barbers b ON b.id=a.barber_id JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? AND a.status IN ('pending','confirmed') ORDER BY a.appointment_time");$q->execute([$bid,$date]);out($q->fetchAll());
+        $q=db()->prepare("SELECT a.id,a.appointment_date AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,a.barber_id,b.name AS barber_name,c.name AS customer_name,c.phone AS customer_phone,s.name AS service_name,a.status FROM appointments a JOIN barbers b ON b.id=a.barber_id JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? AND a.status IN ('pending','confirmed') ORDER BY a.appointment_time");$q->execute([$bid,$date]);$appointments=$q->fetchAll();
+        // O frontend atual espera um objeto com a chave appointments. Mantemos também available_times para futuras telas.
+        $available=[];
+        try { $dow=(int)(new DateTime($date))->format('w'); $sq=db()->prepare("SELECT active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? AND day_of_week=? LIMIT 1"); $sq->execute([$bid,$dow]); $sch=$sq->fetch(); if($sch && (bool)$sch['active']) { $start=$sch['start_time']; $end=$sch['end_time']; for($m=0;$m<1440;$m+=30){$hh=intdiv($m,60);$mm=$m%60;$t=sprintf('%02d:%02d',$hh,$mm); if($t<$start||$t>$end) continue; if($sch['break_start'] && $sch['break_end'] && $t>=$sch['break_start'] && $t<$sch['break_end']) continue; $busy=false; foreach($appointments as $a){if(substr((string)$a['time'],0,5)===$t){$busy=true;break;}} if(!$busy)$available[]=$t;}} } catch(Throwable $e) {}
+        out(['appointments'=>$appointments,'available_times'=>$available]);
     }
     if($path==='/api/admin/login' && $method==='POST') { $d=body();$configured=getenv('ADMIN_PASSWORD')?:'studioaa123';if(!hash_equals($configured,(string)($d['password']??'')))out(['error'=>'Senha incorreta'],401);out(['ok'=>true]); }
 
