@@ -14,10 +14,36 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}
 .manage{margin-top:18px;border:1px solid #3a301b;border-radius:18px;padding:18px;background:#0d0d0d}.manage h3{margin:0 0 14px;color:var(--gold);font-size:14px}.manageGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.manageBox{border:1px solid #2b2b2b;border-radius:14px;padding:14px;background:#121212;margin-bottom:10px}.manageRow{display:grid;grid-template-columns:1.2fr .7fr 1.2fr;gap:8px;margin-bottom:8px}.manageRow input{min-width:0}.toggle{display:flex;gap:8px;align-items:center;color:#bbb;font-size:12px;margin:8px 0}.dayrow{display:grid;grid-template-columns:90px 75px 1fr 1fr 1fr 1fr;gap:7px;align-items:center;margin:6px 0}.dayrow input{padding:8px;background:#090909;color:#fff;border:1px solid #333;border-radius:8px}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
 @media(max-width:780px){.hero,.manageGrid{grid-template-columns:1fr}.heroMedia{height:300px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.manageRow,.dayrow{grid-template-columns:1fr 1fr}}
+
+.galleryHero{margin-top:22px;padding:28px;border:1px solid #2b2415;border-radius:24px;background:linear-gradient(100deg,#101010 0%,#15120c 52%,#090909 100%);position:relative;overflow:hidden}
+.galleryHero:after{content:"";position:absolute;right:-80px;top:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,#d6a82e22 0,transparent 68%);pointer-events:none}
+.galleryHero h2{margin:0;font-size:clamp(30px,5vw,54px);line-height:1}.galleryHero p{color:var(--muted);font-size:16px;margin:12px 0 0;max-width:720px}
+.galleryTools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:18px 0 12px}
+.galleryFilters{display:flex;gap:8px;flex-wrap:wrap}.galleryFilter{border:1px solid #333;background:#161616;color:#ddd;border-radius:999px;padding:9px 14px;font-weight:800;cursor:pointer}.galleryFilter.active{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#111;border-color:var(--gold)}
+.gallerySearch{min-width:220px;max-width:300px;flex:1;background:#090909;color:#fff;border:1px solid #3b3b3b;border-radius:999px;padding:11px 15px;outline:none}
+.galleryGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.galleryCard{background:#0e0e0e;border:1px solid #2b2b2b;border-radius:17px;overflow:hidden;transition:.2s;box-shadow:0 10px 30px #0006}
+.galleryCard:hover{transform:translateY(-3px);border-color:#6a521f}.galleryPhoto{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}.galleryInfo{padding:13px}.galleryInfo strong{display:block;font-size:15px}.galleryInfo p{margin:5px 0 11px;color:#999;font-size:12px;min-height:30px}.galleryBook{width:100%;padding:10px 8px;font-size:12px}
+.galleryEmpty{padding:30px;text-align:center;color:#888;border:1px dashed #333;border-radius:16px;grid-column:1/-1}
+@media(max-width:900px){.galleryGrid{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.galleryGrid{grid-template-columns:repeat(2,1fr)}.gallerySearch{max-width:none}.galleryHero{padding:22px}}
 </style></head><body>
 <header><div class="nav"><div class="brand"><img src="logo-site.png"><span><span class="gold">BARBEARIA</span> STUDIO A.A</span></div><button class="btn" onclick="openAdmin()">PAINEL</button></div></header>
 <main>
 <section class="hero card"><div class="heroMedia"><img src="logo-site.png" alt="BARBEARIA STUDIO A.A"></div><div class="heroCopy"><div class="eyebrow gold">BARBEARIA PREMIUM</div><h1>Seu estilo.<br><span class="gold">Nosso compromisso.</span></h1><p>Escolha o serviço, barbeiro, data e horário.</p><div class="actions"><button class="btn primary" onclick="showBooking()">AGENDAR AGORA</button><button class="btn" onclick="document.querySelector('#services').scrollIntoView()">VER SERVIÇOS</button></div></div></section>
+
+<section id="galeria" class="section">
+  <div class="galleryHero">
+    <div class="eyebrow gold">INSPIRAÇÃO PARA O SEU ESTILO</div>
+    <h2>GALERIA <span class="gold">DE CORTES</span></h2>
+    <p>Inspiração para o seu próximo visual. Escolha seu estilo e agende seu horário!</p>
+  </div>
+  <div class="galleryTools">
+    <div class="galleryFilters" id="galleryFilters"></div>
+    <input class="gallerySearch" id="gallerySearch" placeholder="🔎 Buscar corte..." autocomplete="off">
+  </div>
+  <div class="galleryGrid" id="galleryGrid"></div>
+</section>
+
 <section id="services" class="section"><div class="sectionTitle">SERVIÇOS</div><div class="card" id="serviceList"></div></section>
 <section class="section"><div class="sectionTitle">NOSSOS BARBEIROS</div><div class="grid" id="barberList"></div></section>
 <section id="booking" class="booking card"><div class="sectionTitle">AGENDAR HORÁRIO</div><div class="formgrid"><div class="field"><label>Serviço</label><select id="service"></select></div><div class="field"><label>Barbeiro</label><select id="barber"></select></div><div class="field"><label>Seu nome</label><input id="name"></div><div class="field"><label>WhatsApp</label><input id="phone" inputmode="tel"></div><div class="field"><label>Data</label><input id="date" type="date"></div></div><div class="field" style="margin-top:13px"><label>Horário disponível</label><div class="slots" id="slots"></div></div><div class="actions"><button class="btn primary" onclick="confirmBooking()">CONFIRMAR AGENDAMENTO</button><button class="btn" onclick="hideBooking()">FECHAR</button></div><div id="message"></div></section>
@@ -34,6 +60,31 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div></div></section>
 <div class="footer">BARBEARIA STUDIO A.A • ESTILO • RESPEITO • ATITUDE</div></main>
 <script>
+
+const galleryItems=[
+ {name:"Degradê com Listra",cat:"Degradê",desc:"Visual marcante e moderno.",img:"galeria/degrade-com-listra.jpg"},
+ {name:"Social Moderno",cat:"Social",desc:"Discreto, elegante e atual.",img:"galeria/social-moderno.jpg"},
+ {name:"Degradê em V",cat:"Degradê",desc:"Personalidade em cada detalhe.",img:"galeria/degrade-em-v.jpg"},
+ {name:"Platinado",cat:"Tendências",desc:"Visual ousado e moderno.",img:"galeria/platinado.jpg"},
+ {name:"Moicano Disfarçado",cat:"Tendências",desc:"Estilo forte e atual.",img:"galeria/moicano-disfarcado.jpg"},
+ {name:"Corte com Barba",cat:"Barba",desc:"Estilo completo e alinhado.",img:"galeria/corte-com-barba.jpg"},
+ {name:"Corte Infantil",cat:"Infantil",desc:"Estilo e diversão para os pequenos.",img:"galeria/corte-infantil.jpg"},
+ {name:"Degradê Baixo",cat:"Degradê",desc:"Clássico, discreto e elegante.",img:"galeria/degrade-baixo.jpg"},
+ {name:"Barba Estilizada",cat:"Barba",desc:"Acabamento preciso e moderno.",img:"galeria/barba-estilizada.jpg"},
+ {name:"Cachos Modernos",cat:"Cacheado",desc:"Volume, definição e personalidade.",img:"galeria/cachos-modernos.jpg"},
+ {name:"Corte Texturizado",cat:"Texturizado",desc:"Movimento e estilo no visual.",img:"galeria/corte-texturizado.jpg"},
+ {name:"Corte Infantil Moderno",cat:"Infantil",desc:"Um visual moderno para os pequenos.",img:"galeria/corte-infantil-moderno.jpg"}
+];
+let galleryCat="Todos";
+function renderGallery(){
+ const q=(document.querySelector("#gallerySearch")?.value||"").trim().toLowerCase();
+ const cats=["Todos",...new Set(galleryItems.map(x=>x.cat))];
+ document.querySelector("#galleryFilters").innerHTML=cats.map(c=>`<button type="button" class="galleryFilter ${galleryCat===c?"active":""}" onclick="setGalleryCat('${esc(c)}')">${esc(c)}</button>`).join("");
+ const list=galleryItems.filter(x=>(galleryCat==="Todos"||x.cat===galleryCat)&&(!q||x.name.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q)));
+ document.querySelector("#galleryGrid").innerHTML=list.length?list.map(x=>`<article class="galleryCard"><img class="galleryPhoto" src="${x.img}" alt="${esc(x.name)}" loading="lazy"><div class="galleryInfo"><strong>${esc(x.name)}</strong><p>${esc(x.desc)}</p><button type="button" class="btn primary galleryBook" onclick="showBooking()">AGENDAR ESTE CORTE</button></div></article>`).join(""):'<div class="galleryEmpty">Nenhum corte encontrado.</div>';
+}
+function setGalleryCat(c){galleryCat=c;renderGallery()}
+
 const API="https://studio-aa-api.onrender.com",times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
 let services=[],barbers=[],chosenTime="",booked=[];
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
@@ -80,5 +131,6 @@ async function addService(){const n=prompt("Nome do corte/serviço:");if(!n)retu
 async function loadScheduleEditor(){try{const rows=await api("/api/schedules?barber_id="+scheduleBarber.value),days=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];scheduleAdmin.innerHTML=days.map((d,i)=>{const r=rows.find(x=>+x.day_of_week===i)||{active:i>0&&i<6,start_time:"09:00",end_time:"18:00",break_start:"12:30",break_end:"14:00"};return `<div class="dayrow"><b>${d}</b><label><input id="act${i}" type="checkbox" ${r.active?"checked":""}> aberto</label><input id="st${i}" type="time" value="${r.start_time||"09:00"}"><input id="en${i}" type="time" value="${r.end_time||"18:00"}"><input id="bs${i}" type="time" value="${r.break_start||""}"><input id="be${i}" type="time" value="${r.break_end||""}"></div>`}).join("")}catch(e){scheduleAdmin.innerHTML='<div class="notice err">Não foi possível carregar horários.</div>'}}
 async function saveSchedule(){const rows=[];for(let i=0;i<7;i++)rows.push({day_of_week:i,active:document.querySelector("#act"+i).checked,start_time:document.querySelector("#st"+i).value,end_time:document.querySelector("#en"+i).value,break_start:document.querySelector("#bs"+i).value,break_end:document.querySelector("#be"+i).value});try{await api("/api/schedules",{method:"PUT",body:JSON.stringify({barber_id:+scheduleBarber.value,schedules:rows})});manageMsg.innerHTML='<div class="notice ok">Horários salvos.</div>'}catch(e){manageMsg.innerHTML=`<div class="notice err">${esc(e.message)}</div>`}}
 date.min=new Date().toISOString().slice(0,10);date.addEventListener("change",refreshAvailability);barber.addEventListener("change",refreshAvailability);agendaDate.addEventListener("change",loadDashboard);agendaBarber.addEventListener("change",loadDashboard);
+document.addEventListener("DOMContentLoaded",()=>{const gs=document.querySelector("#gallerySearch");if(gs)gs.addEventListener("input",renderGallery);renderGallery();});
 async function boot(){try{services=await api("/api/services");barbers=await api("/api/barbers")}catch{services=[{id:1,name:"Corte Masculino",duration:30,price:35,active:true}];barbers=[{id:1,name:"Lucas",specialty:"Especialista em degradê",rating:4.9,active:true}]}render()}boot();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script></body></html>
