@@ -186,6 +186,12 @@ try {
         out(['stats'=>$stats]+$stats+['appointments'=>$appointments]);
     }
     if(($path==='/api/admin/cancel'||$path==='/api/admin/reactivate') && $method==='POST'){$d=body();$id=(int)($d['id']??0);if($id<=0)out(['error'=>'ID inválido'],422);$status=$path==='/api/admin/cancel'?'cancelled':'pending';$q=db()->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id");$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
+    if($path==='/api/admin/clear-history' && $method==='POST') {
+        $p=db();
+        $q=$p->query("DELETE FROM appointments WHERE status IN ('cancelled','completed') RETURNING id");
+        $ids=$q->fetchAll(PDO::FETCH_COLUMN);
+        out(['ok'=>true,'deleted'=>(int)count($ids),'ids'=>array_map('intval',$ids)]);
+    }
     if($path==='/api/admin/status' && $method==='POST'){$d=body();$id=(int)($d['id']??0);$status=(string)($d['status']??'');if($id<=0||!in_array($status,['pending','confirmed','cancelled','completed'],true))out(['error'=>'Status inválido'],422);$q=db()->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
     out(['error'=>'Rota não encontrada'],404);
 }catch(Throwable $e){out(['error'=>'Erro interno','detail'=>$e->getMessage()],500);}
