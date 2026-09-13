@@ -43,9 +43,49 @@ function isBooked(t){const d=document.querySelector("#date").value,b=+document.q
 function renderSlots(){document.querySelector("#slots").innerHTML=times.map(t=>{const dis=isBooked(t);return `<button type="button" class="slot ${chosenTime===t&&!dis?"active":""} ${dis?"disabled":""}" ${dis?"disabled":""} onclick="chooseTime('${t}')">${t}</button>`}).join("")}
 function chooseTime(t){if(!isBooked(t)){chosenTime=t;renderSlots()}}
 async function refreshAvailability(){chosenTime="";try{const data=await api(`/api/availability?barber_id=${+document.querySelector("#barber").value}&date=${document.querySelector("#date").value}`);booked=Array.isArray(data)?data:(Array.isArray(data.appointments)?data.appointments:[])}catch{booked=[]}renderSlots()}
-function showBooking(){document.querySelector("#booking").style.display="block";document.querySelector("#booking").scrollIntoView({behavior:"smooth"});if(!document.querySelector("#date").value)document.querySelector("#date").value=new Date().toISOString().slice(0,10);refreshAvailability()}
+function showBooking(){document.querySelector("#booking").style.display="block";document.querySelector("#booking").scrollIntoView({behavior:"smooth"});if(!document.getElementById("date").value)document.getElementById("date").value=new Date().toISOString().slice(0,10);refreshAvailability()}
 function hideBooking(){document.querySelector("#booking").style.display="none"}
-async function confirmBooking(){const p={service_id:+service.value,barber_id:+barber.value,customer_name:name.value.trim(),customer_phone:phone.value.trim(),date:date.value,time:chosenTime};if(!p.customer_name||!p.customer_phone||!p.date||!p.time)return message.innerHTML='<div class="notice err">Preencha todos os campos.</div>';if(isBooked(p.time))return message.innerHTML='<div class="notice err">Horário ocupado.</div>';try{const r=await api("/api/appointments",{method:"POST",body:JSON.stringify(p)});message.innerHTML=`<div class="notice ok">Agendamento confirmado! Código: <b>${esc(r.id)}</b></div>`;refreshAvailability()}catch(e){message.innerHTML=`<div class="notice err">${esc(e.message)}</div>`}}
+async function confirmBooking(){
+  const serviceEl=document.getElementById("service");
+  const barberEl=document.getElementById("barber");
+  const nameEl=document.getElementById("name");
+  const phoneEl=document.getElementById("phone");
+  const dateEl=document.getElementById("date");
+  const messageEl=document.getElementById("message");
+
+  const p={
+    service_id:Number(serviceEl.value),
+    barber_id:Number(barberEl.value),
+    customer_name:nameEl.value.trim(),
+    customer_phone:phoneEl.value.trim(),
+    date:dateEl.value,
+    time:chosenTime
+  };
+
+  if(!p.service_id||!p.barber_id||!p.customer_name||!p.customer_phone||!p.date||!p.time){
+    messageEl.innerHTML='<div class="notice err">Preencha todos os campos e escolha um horário.</div>';
+    return;
+  }
+
+  if(isBooked(p.time)){
+    messageEl.innerHTML='<div class="notice err">Horário ocupado. Escolha outro horário.</div>';
+    return;
+  }
+
+  messageEl.innerHTML='<div class="notice">Enviando agendamento...</div>';
+
+  try{
+    const r=await api("/api/appointments",{
+      method:"POST",
+      body:JSON.stringify(p)
+    });
+    messageEl.innerHTML=`<div class="notice ok">Agendamento realizado com sucesso! Código: <b>${esc(r.id||"")}</b></div>`;
+    chosenTime="";
+    await refreshAvailability();
+  }catch(e){
+    messageEl.innerHTML=`<div class="notice err">Não foi possível agendar: ${esc(e.message||"Erro")}</div>`;
+  }
+}
 function openAdmin(){admin.style.display="block";admin.scrollIntoView({behavior:"smooth"})}
 function adminLogin(){if(adminPass.value==="studioaa123"){loginBox.style.display="none";dashboard.style.display="block";agendaDate.value=new Date().toISOString().slice(0,10);loadManagement();loadDashboard()}else alert("Senha incorreta.")}
 function adminLogout(){dashboard.style.display="none";loginBox.style.display="block";adminPass.value=""}
