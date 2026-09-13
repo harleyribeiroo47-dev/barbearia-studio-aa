@@ -108,7 +108,7 @@ const fallbackBarbers=[
 ];
 const times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
 let services=[...fallbackServices], barbers=[...fallbackBarbers], chosenTime="";
-let publicSchedule=null;
+let publicSchedule=null, scheduleRequestSeq=0, availabilityRequestSeq=0;
 let adminPassword="", agendaAppointments=[], barberSchedules={};
 
 
@@ -166,9 +166,17 @@ function isTimeInSchedule(t,s){
 }
 async function loadPublicSchedule(){
  const date=document.querySelector('#date').value, barberId=document.querySelector('#barber').value;
+ const req=++scheduleRequestSeq;
  if(!API||!date||!barberId){publicSchedule=null;renderSlots();return;}
- try{const wd=new Date(date+'T12:00:00').getDay();const data=await api(`/api/schedule?barber_id=${encodeURIComponent(barberId)}&weekday=${wd}`);publicSchedule=data.schedule||null;}catch(e){publicSchedule=null;}
- renderSlots();
+ try{
+  const wd=new Date(date+'T12:00:00').getDay();
+  const data=await api(`/api/schedule?barber_id=${encodeURIComponent(barberId)}&weekday=${wd}`);
+  if(req!==scheduleRequestSeq || document.querySelector('#date').value!==date || document.querySelector('#barber').value!==String(barberId)) return;
+  publicSchedule=data.schedule||null;
+ }catch(e){
+  if(req===scheduleRequestSeq){publicSchedule=null;}
+ }
+ if(req===scheduleRequestSeq)renderSlots();
 }
 
 function renderSlots(){
@@ -207,15 +215,19 @@ async function api(path,options={}){
 async function loadBookedAppointments(){
  const date=document.querySelector("#date").value;
  const barberId=document.querySelector("#barber").value;
+ const req=++availabilityRequestSeq;
  if(!API||!date||!barberId){bookedAppointments=[];renderSlots();return;}
  try{
   const data=await api(`/api/availability?barber_id=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`);
+  if(req!==availabilityRequestSeq || document.querySelector("#date").value!==date || document.querySelector("#barber").value!==String(barberId)) return;
   bookedAppointments=Array.isArray(data.appointments)?data.appointments.map(normalizeAppointment):[];
   renderSlots();
  }catch(e){
-  console.warn("Não foi possível consultar a disponibilidade.",e);
-  bookedAppointments=[];
-  renderSlots();
+  if(req===availabilityRequestSeq){
+   console.warn("Não foi possível consultar a disponibilidade.",e);
+   bookedAppointments=[];
+   renderSlots();
+  }
  }
 }
 
@@ -233,19 +245,28 @@ async function loadApi(){
 }
 
 async function confirmBooking(){
+ const selectedDate=document.querySelector("#date").value;
+ const selectedBarber=Number(document.querySelector("#barber").value);
+ const selectedTime=chosenTime;
  const payload={
   service_id:Number(document.querySelector("#service").value),
-  barber_id:Number(document.querySelector("#barber").value),
+  barber_id:selectedBarber,
   customer_name:document.querySelector("#name").value.trim(),
   customer_phone:document.querySelector("#phone").value.trim(),
-  date:document.querySelector("#date").value,
-  time:chosenTime
+  date:selectedDate,
+  time:selectedTime
  };
- if(!payload.customer_name||!payload.customer_phone||!payload.date||!payload.time){
+ if(!payload.customer_name||!payload.customer_phone||!selectedDate||!selectedTime){
   document.querySelector("#message").innerHTML='<div class="notice err">Preencha nome, WhatsApp, data e horário.</div>';
   return;
  }
- if(isBooked(payload.barber_id,payload.date,payload.time)){
+ if(document.querySelector("#date").value!==selectedDate || Number(document.querySelector("#barber").value)!==selectedBarber || chosenTime!==selectedTime){
+  document.querySelector("#message").innerHTML='<div class="notice err">A seleção mudou. Escolha novamente a data e o horário.</div>';
+  chosenTime="";
+  renderSlots();
+  return;
+ }
+ if(isBooked(selectedBarber,selectedDate,selectedTime)){
   document.querySelector("#message").innerHTML='<div class="notice err">Esse horário acabou de ser reservado. Escolha outro horário.</div>';
   chosenTime="";
   await loadBookedAppointments();
@@ -257,7 +278,8 @@ async function confirmBooking(){
    bookedAppointments.push({...payload,id:r.id,status:"Pendente"});
    chosenTime="";
    renderSlots();
-   document.querySelector("#message").innerHTML=`<div class="notice ok">Agendamento confirmado! Código: <b>${esc(r.id)}</b></div>`;
+   const shownDate=new Date(selectedDate+"T12:00:00").toLocaleDateString("pt-BR");
+   document.querySelector("#message").innerHTML=`<div class="notice ok">Agendamento confirmado para <b>${shownDate}</b> às <b>${esc(selectedTime)}</b>! Código: <b>${esc(r.id)}</b></div>`;
    return;
   }catch(e){
    document.querySelector("#message").innerHTML='<div class="notice err">Não foi possível salvar no servidor. Verifique a API.</div>';
@@ -266,12 +288,13 @@ async function confirmBooking(){
   }
  }
  const list=JSON.parse(localStorage.getItem("studioAAAppointments")||"[]");
- list.push({...payload,id:Date.now(),created_at:new Date().toISOString(),status:"Pendente"});
+ const id=Date.now();
+ list.push({...payload,id,created_at:new Date().toISOString(),status:"Pendente"});
  localStorage.setItem("studioAAAppointments",JSON.stringify(list));
- bookedAppointments.push({...payload,id:Date.now(),status:"Pendente"});
+ bookedAppointments.push({...payload,id,status:"Pendente"});
  chosenTime="";
  renderSlots();
- document.querySelector("#message").innerHTML='<div class="notice ok">Agendamento registrado neste dispositivo.</div>';
+ document.querySelector("#message").innerHTML=`<div class="notice ok">Agendamento registrado para <b>${new Date(selectedDate+"T12:00:00").toLocaleDateString("pt-BR")}</b> às <b>${esc(selectedTime)}</b>.</div>`;
 }
 
 function openAdmin(){document.querySelector("#admin").style.display="block";document.querySelector("#admin").scrollIntoView({behavior:"smooth"})}
@@ -416,7 +439,7 @@ async function loadScheduleEditor(){
  try{const data=await api(`/api/admin/schedule?barber_id=${encodeURIComponent(id)}`,{headers:{'X-Admin-Password':adminPassword}}); barberSchedules[id]=data.schedule||[];
  const map={}; (data.schedule||[]).forEach(x=>map[x.weekday]=x);
  const days=[['1','Segunda'],['2','Terça'],['3','Quarta'],['4','Quinta'],['5','Sexta'],['6','Sábado'],['0','Domingo']];
- box.innerHTML=`<table class="scheduleTable"><thead><tr><th>Dia</th><th>Aberto</th><th>Início</th><th>Fim</th><th>Intervalo início</th><th>Intervalo fim</th></tr></thead><tbody>${days.map(([d,n])=>{const x=map[d]||{open:d!=='0',start:'09:00',end:'20:00',break_start:'12:30',break_end:'14:00'};return `<tr><td>${n}</td><td><input class="check" type="checkbox" id="open_${d}" ${x.open?'checked':''}></td><td><input type="time" id="start_${d}" value="${esc(String(x.start||'09:00').slice(0,5))}"></td><td><input type="time" id="end_${d}" value="${esc(String(x.end||'18:00').slice(0,5))}"></td><td><input type="time" id="bs_${d}" value="${esc(String(x.break_start||'12:30').slice(0,5))}"></td><td><input type="time" id="be_${d}" value="${esc(String(x.break_end||'14:00').slice(0,5))}"></td></tr>`}).join('')}</tbody></table><div class="manageActions"><button class="btn primary" onclick="saveSchedule(${Number(id)})">SALVAR HORÁRIOS</button></div>`;
+ box.innerHTML=`<table class="scheduleTable"><thead><tr><th>Dia</th><th>Aberto</th><th>Início</th><th>Fim</th><th>Intervalo início</th><th>Intervalo fim</th></tr></thead><tbody>${days.map(([d,n])=>{const x=map[d]||{open:d!=='0',start:'09:00',end:'18:00',break_start:'12:30',break_end:'14:00'};return `<tr><td>${n}</td><td><input class="check" type="checkbox" id="open_${d}" ${x.open?'checked':''}></td><td><input type="time" id="start_${d}" value="${esc(String(x.start||'09:00').slice(0,5))}"></td><td><input type="time" id="end_${d}" value="${esc(String(x.end||'18:00').slice(0,5))}"></td><td><input type="time" id="bs_${d}" value="${esc(String(x.break_start||'12:30').slice(0,5))}"></td><td><input type="time" id="be_${d}" value="${esc(String(x.break_end||'14:00').slice(0,5))}"></td></tr>`}).join('')}</tbody></table><div class="manageActions"><button class="btn primary" onclick="saveSchedule(${Number(id)})">SALVAR HORÁRIOS</button></div>`;
  }catch(e){box.innerHTML='<div class="notice err">Não foi possível carregar os horários.</div>';}
 }
 async function saveSchedule(barberId){
@@ -432,8 +455,8 @@ function adminLogout(){
 }
 
 document.querySelector("#date").min=new Date().toISOString().slice(0,10);
-document.querySelector("#date").addEventListener("change",()=>{chosenTime="";loadPublicSchedule();loadBookedAppointments()});
-document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";loadPublicSchedule();loadBookedAppointments()});
+document.querySelector("#date").addEventListener("change",()=>{chosenTime="";scheduleRequestSeq++;availabilityRequestSeq++;publicSchedule=null;bookedAppointments=[];renderSlots();loadPublicSchedule();loadBookedAppointments()});
+document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";scheduleRequestSeq++;availabilityRequestSeq++;publicSchedule=null;bookedAppointments=[];renderSlots();loadPublicSchedule();loadBookedAppointments()});
 render();loadApi();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script>
