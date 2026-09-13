@@ -36,7 +36,8 @@ function initDb(PDO $p): void {
     $q=$p->prepare("INSERT INTO barbers(name,specialty,rating) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM barbers WHERE name=? )"); foreach($barbers as $x)$q->execute([$x[0],$x[1],$x[2],$x[0]]);
 }
 function boolv($v): bool { if(is_bool($v)) return $v; $s=strtolower(trim((string)$v)); return in_array($s,['1','true','on','yes','sim','aberto','active'],true); }
-function timev($v): ?string { $s=trim((string)$v); return $s===''?null:$s; }
+function timev($v): ?string { $s=trim((string)$v); if($s==='') return null; if(preg_match('/^\d{1,2}:\d{2}$/',$s)){ [$h,$m]=array_map('intval',explode(':',$s)); if($h>=0&&$h<=23&&$m>=0&&$m<=59) return sprintf('%02d:%02d',$h,$m); } if(preg_match('/^\d{1,2}:\d{2}:\d{2}$/',$s)){ [$h,$m,$sec]=array_map('intval',explode(':',$s)); if($h>=0&&$h<=23&&$m>=0&&$m<=59&&$sec>=0&&$sec<=59) return sprintf('%02d:%02d:%02d',$h,$m,$sec); } return null; }
+function datev($v): ?string { $s=trim((string)$v); if($s==='') return null; if(preg_match('/^\d{4}-\d{2}-\d{2}$/',$s)){ $dt=DateTime::createFromFormat('Y-m-d',$s); return ($dt&&$dt->format('Y-m-d')===$s)?$s:null; } if(preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/',$s,$m)){ $dt=DateTime::createFromFormat('Y-m-d',"{$m[3]}-{$m[2]}-{$m[1]}"); return $dt?$dt->format('Y-m-d'):null; } return null; }
 function adminOk(): bool { return true; } // compatibilidade com o painel atual
 function getSchedule(PDO $p,int $barber): array {
     $q=$p->prepare("SELECT day_of_week AS weekday, day_of_week, active AS open, active, start_time AS start, start_time, end_time AS end, end_time, break_start, break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week");
@@ -50,15 +51,37 @@ try {
     if($path==='/api/barbers' && $method==='GET') out(db()->query("SELECT id,name,specialty,rating FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 
     if($path==='/api/appointments' && $method==='POST') {
-        $d=body(); foreach(['service_id','barber_id','customer_name','customer_phone','date','time'] as $k) if(empty($d[$k])) out(['error'=>"Campo obrigatório: $k"],422);
-        $p=db(); $p->beginTransaction(); try {
-            $lock=sprintf('%u',crc32((string)((int)$d['barber_id'].'|'.$d['date'].'|'.$d['time']))); $p->prepare("SELECT pg_advisory_xact_lock(CAST(? AS bigint))")->execute([$lock]);
-            $q=$p->prepare("SELECT COUNT(*) FROM appointments WHERE barber_id=? AND appointment_date=? AND appointment_time=? AND status IN ('pending','confirmed')"); $q->execute([(int)$d['barber_id'],$d['date'],$d['time']]); if((int)$q->fetchColumn()>0){$p->rollBack();out(['error'=>'Horário já ocupado'],409);}
-            $q=$p->prepare('SELECT id FROM customers WHERE phone=?');$q->execute([$d['customer_phone']]);$c=$q->fetch();
-            if($c){$cid=(int)$c['id'];$p->prepare('UPDATE customers SET name=? WHERE id=?')->execute([$d['customer_name'],$cid]);}
-            else{$q=$p->prepare('INSERT INTO customers(name,phone) VALUES(?,?) RETURNING id');$q->execute([$d['customer_name'],$d['customer_phone']]);$cid=(int)$q->fetchColumn();}
-            $q=$p->prepare("INSERT INTO appointments(customer_id,service_id,barber_id,appointment_date,appointment_time,status) VALUES(?,?,?,?,?,'pending') RETURNING id");$q->execute([$cid,(int)$d['service_id'],(int)$d['barber_id'],$d['date'],$d['time']]);$id=(int)$q->fetchColumn();$p->commit();out(['id'=>$id,'status'=>'pending'],201);
-        }catch(Throwable $e){if($p->inTransaction())$p->rollBack();throw $e;}
+        $d=body();
+        $service=(int)($d['service_id']??$d['serviceId']??$d['service']??0);
+        $barber=(int)($d['barber_id']??$d['barberId']??$d['barber']??0);
+        $name=trim((string)($d['customer_name']??$d['customerName']??$d['name']??$d['cliente_nome']??''));
+        $phone=trim((string)($d['customer_phone']??$d['customerPhone']??$d['phone']??$d['telefone']??$d['cliente_telefone']??''));
+        $date=datev($d['date']??$d['appointment_date']??$d['booking_date']??$d['data']??'');
+        $time=timev($d['time']??$d['appointment_time']??$d['booking_time']??$d['horario']??'');
+        if($service<=0) out(['error'=>'Serviço inválido'],422);
+        if($barber<=0) out(['error'=>'Barbeiro inválido'],422);
+        if($name==='') out(['error'=>'Nome do cliente é obrigatório'],422);
+        if($phone==='') out(['error'=>'WhatsApp do cliente é obrigatório'],422);
+        if($date===null) out(['error'=>'Data inválida'],422);
+        if($time===null) out(['error'=>'Horário inválido'],422);
+        $p=db();
+        try {
+            $lockKey=(int)sprintf('%u',crc32($barber.'|'.$date.'|'.$time));
+            $p->beginTransaction();
+            $p->query('SELECT pg_advisory_xact_lock('.$lockKey.')');
+            $q=$p->prepare("SELECT COUNT(*) FROM appointments WHERE barber_id=? AND appointment_date=? AND appointment_time=? AND status IN ('pending','confirmed')");
+            $q->execute([$barber,$date,$time]);
+            if((int)$q->fetchColumn()>0){$p->rollBack();out(['error'=>'Horário já ocupado'],409);}
+            $q=$p->prepare('SELECT id FROM customers WHERE phone=?'); $q->execute([$phone]); $c=$q->fetch();
+            if($c){$cid=(int)$c['id'];$p->prepare('UPDATE customers SET name=? WHERE id=?')->execute([$name,$cid]);}
+            else{$q=$p->prepare('INSERT INTO customers(name,phone) VALUES(?,?) RETURNING id');$q->execute([$name,$phone]);$cid=(int)$q->fetchColumn();}
+            $q=$p->prepare("INSERT INTO appointments(customer_id,service_id,barber_id,appointment_date,appointment_time,status) VALUES(?,?,?,?,?,'pending') RETURNING id");
+            $q->execute([$cid,$service,$barber,$date,$time]);
+            $id=(int)$q->fetchColumn(); $p->commit(); out(['ok'=>true,'id'=>$id,'status'=>'pending'],201);
+        } catch(Throwable $e) {
+            if($p->inTransaction())$p->rollBack();
+            out(['error'=>'Não foi possível criar o agendamento','detail'=>$e->getMessage()],500);
+        }
     }
     if($path==='/api/availability' && $method==='GET') {
         $bid=(int)($_GET['barber_id']??0);$date=trim((string)($_GET['date']??''));if($bid<=0||$date==='')out(['error'=>'barber_id e date são obrigatórios'],422);
