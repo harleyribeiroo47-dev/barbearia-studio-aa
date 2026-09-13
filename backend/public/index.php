@@ -143,7 +143,29 @@ try {
     }
 
     if($path==='/api/admin/dashboard' && $method==='GET'){
-        $p=db();$appointments=$p->query("SELECT a.id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,a.status,c.name AS customer_name,c.phone AS customer_phone,b.name AS barber_name,s.name AS service_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN barbers b ON b.id=a.barber_id JOIN services s ON s.id=a.service_id ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC")->fetchAll();$stats=['today'=>(int)$p->query("SELECT COUNT(*) FROM appointments WHERE appointment_date=CURRENT_DATE AND status IN ('pending','confirmed')")->fetchColumn(),'clients'=>(int)$p->query('SELECT COUNT(*) FROM customers')->fetchColumn(),'barbers'=>(int)$p->query('SELECT COUNT(*) FROM barbers WHERE active=TRUE')->fetchColumn(),'services'=>(int)$p->query('SELECT COUNT(*) FROM services WHERE active=TRUE')->fetchColumn()];out(['stats'=>$stats]+$stats+['appointments'=>$appointments]);
+        $p=db();
+        $date=trim((string)($_GET['date']??''));
+        $barberId=(int)($_GET['barber_id']??0);
+        $where=[];$params=[];
+        if($date!==''){ $where[]='a.appointment_date=?'; $params[]=$date; }
+        if($barberId>0){ $where[]='a.barber_id=?'; $params[]=$barberId; }
+        $sql="SELECT a.id,a.barber_id,a.service_id,a.customer_id,
+                     TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,
+                     TO_CHAR(a.appointment_time,'HH24:MI') AS time,
+                     a.status,c.name AS customer_name,c.phone AS customer_phone,
+                     b.name AS barber_name,s.name AS service_name
+              FROM appointments a
+              JOIN customers c ON c.id=a.customer_id
+              JOIN barbers b ON b.id=a.barber_id
+              JOIN services s ON s.id=a.service_id";
+        if($where) $sql.=" WHERE ".implode(' AND ',$where);
+        $sql.=" ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC";
+        $q=$p->prepare($sql);$q->execute($params);$appointments=$q->fetchAll();
+        $stats=['today'=>(int)$p->query("SELECT COUNT(*) FROM appointments WHERE appointment_date=CURRENT_DATE AND status IN ('pending','confirmed')")->fetchColumn(),
+                'clients'=>(int)$p->query('SELECT COUNT(*) FROM customers')->fetchColumn(),
+                'barbers'=>(int)$p->query('SELECT COUNT(*) FROM barbers WHERE active=TRUE')->fetchColumn(),
+                'services'=>(int)$p->query('SELECT COUNT(*) FROM services WHERE active=TRUE')->fetchColumn()];
+        out(['stats'=>$stats]+$stats+['appointments'=>$appointments]);
     }
     if(($path==='/api/admin/cancel'||$path==='/api/admin/reactivate') && $method==='POST'){$d=body();$id=(int)($d['id']??0);if($id<=0)out(['error'=>'ID inválido'],422);$status=$path==='/api/admin/cancel'?'cancelled':'pending';$q=db()->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id");$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
     if($path==='/api/admin/status' && $method==='POST'){$d=body();$id=(int)($d['id']??0);$status=(string)($d['status']??'');if($id<=0||!in_array($status,['pending','confirmed','cancelled','completed'],true))out(['error'=>'Status inválido'],422);$q=db()->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
