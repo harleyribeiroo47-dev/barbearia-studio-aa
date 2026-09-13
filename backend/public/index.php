@@ -25,11 +25,11 @@ function initDb(PDO $p): void {
     $p->exec("CREATE TABLE IF NOT EXISTS appointments(id BIGSERIAL PRIMARY KEY,customer_id BIGINT NOT NULL REFERENCES customers(id),service_id BIGINT NOT NULL REFERENCES services(id),barber_id BIGINT NOT NULL REFERENCES barbers(id),appointment_date DATE NOT NULL,appointment_time TIME NOT NULL,status appointment_status NOT NULL DEFAULT 'pending',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_barber_date ON appointments(barber_id,appointment_date)");
-    $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,day_of_week INTEGER NOT NULL,start_time TIME,end_time TIME,break_start TIME,break_end TIME,active BOOLEAN NOT NULL DEFAULT TRUE,UNIQUE(barber_id,day_of_week))");
+    $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules_v2(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,day_of_week INTEGER NOT NULL,start_time TIME,end_time TIME,break_start TIME,break_end TIME,active BOOLEAN NOT NULL DEFAULT TRUE,UNIQUE(barber_id,day_of_week))");
     foreach ([
         'day_of_week'=>'INTEGER', 'start_time'=>'TIME', 'end_time'=>'TIME',
         'break_start'=>'TIME', 'break_end'=>'TIME', 'active'=>'BOOLEAN NOT NULL DEFAULT TRUE'
-    ] as $col=>$type) { $p->exec("ALTER TABLE studio_aa_schedules ADD COLUMN IF NOT EXISTS $col $type"); }
+    ] as $col=>$type) { $p->exec("ALTER TABLE studio_aa_schedules_v2 ADD COLUMN IF NOT EXISTS $col $type"); }
     $services=[['Corte Masculino',30,35,1],['Barba Tradicional',20,25,2],['Combo Corte + Barba',50,55,3],['Sobrancelha',15,15,4],['Pigmentação de Barba',30,40,5]];
     $q=$p->prepare("INSERT INTO services(name,duration,price,sort_order) SELECT ?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM services WHERE name=? )"); foreach($services as $x)$q->execute([$x[0],$x[1],$x[2],$x[3],$x[0]]);
     $barbers=[['Lucas','Especialista em degradê',4.9],['Rafael','Barba e bigode',4.8],['Thiago','Corte masculino',4.7],['Matheus','Estilo clássico',4.9]];
@@ -39,8 +39,9 @@ function boolv($v): bool { if(is_bool($v)) return $v; $s=strtolower(trim((string
 function timev($v): ?string { $s=trim((string)$v); return $s===''?null:$s; }
 function adminOk(): bool { return true; } // compatibilidade com o painel atual
 function getSchedule(PDO $p,int $barber): array {
-    $q=$p->prepare("SELECT day_of_week AS weekday, day_of_week, active AS open, active, start_time AS start, start_time, end_time AS end, end_time, break_start, break_end FROM studio_aa_schedules WHERE barber_id=? ORDER BY day_of_week");
-    $q->execute([$barber]); return $q->fetchAll();
+    $q=$p->prepare("SELECT day_of_week AS weekday, day_of_week, active AS open, active, start_time AS start, start_time, end_time AS end, end_time, break_start, break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week");
+    $q->execute([$barber]);
+    return $q->fetchAll();
 }
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/'; $method=$_SERVER['REQUEST_METHOD'];
 try {
@@ -88,7 +89,7 @@ try {
         $d=body();$bid=(int)($d['barber_id']??0);if($bid<=0)out(['error'=>'barber_id é obrigatório'],422);$rows=$d['schedule']??$d['schedules']??$d['days']??null;if(!is_array($rows))out(['error'=>'Horários inválidos'],422);$p=db();
         $p->beginTransaction();
         try{
-            $p->prepare('DELETE FROM studio_aa_schedules WHERE barber_id=?')->execute([$bid]);
+            $p->prepare('DELETE FROM studio_aa_schedules_v2 WHERE barber_id=?')->execute([$bid]);
             foreach($rows as $key=>$r){
                 if(!is_array($r))continue;
                 $day=(int)($r['weekday']??$r['day_of_week']??$r['day']??$key); if($day<0||$day>6)continue;
@@ -96,7 +97,7 @@ try {
                 $start=timev($r['start_time']??$r['start']??$r['open_time']??''); $end=timev($r['end_time']??$r['end']??$r['close_time']??'');
                 $bs=timev($r['break_start']??$r['pause_start']??$r['interval_start']??''); $be=timev($r['break_end']??$r['pause_end']??$r['interval_end']??'');
                 $activeSql=$active?'TRUE':'FALSE';
-                $q=$p->prepare("INSERT INTO studio_aa_schedules(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,CAST(? AS TIME),CAST(? AS TIME),$activeSql)");
+                $q=$p->prepare("INSERT INTO studio_aa_schedules_v2(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?, ?, NULLIF(?::text,'')::TIME, NULLIF(?::text,'')::TIME, NULLIF(?::text,'')::TIME, NULLIF(?::text,'')::TIME, $activeSql)");
                 $q->execute([$bid,$day,$start,$end,$bs,$be]);
             }
             $p->commit(); out(['ok'=>true,'barber_id'=>$bid,'schedule'=>getSchedule($p,$bid)]);
