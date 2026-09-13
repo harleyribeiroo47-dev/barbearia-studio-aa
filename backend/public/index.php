@@ -27,6 +27,8 @@ function initDb(PDO $p): void {
     $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_barber_date ON appointments(barber_id,appointment_date)");
     $p->exec("CREATE TABLE IF NOT EXISTS push_tokens(id BIGSERIAL PRIMARY KEY,phone VARCHAR(40) NOT NULL UNIQUE,expo_push_token TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_push_tokens_phone ON push_tokens(phone)");
+    $p->exec("CREATE TABLE IF NOT EXISTS barber_push_tokens(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL UNIQUE REFERENCES barbers(id) ON DELETE CASCADE,expo_push_token TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE INDEX IF NOT EXISTS idx_barber_push_tokens_barber ON barber_push_tokens(barber_id)");
     $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules_v2(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,day_of_week INTEGER NOT NULL,start_time TIME,end_time TIME,break_start TIME,break_end TIME,active BOOLEAN NOT NULL DEFAULT TRUE,UNIQUE(barber_id,day_of_week))");
     foreach ([
         'day_of_week'=>'INTEGER', 'start_time'=>'TIME', 'end_time'=>'TIME',
@@ -47,6 +49,16 @@ function sendExpoPush(string $token, string $title, string $message, array $data
     $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Content-Type: application/json\r\nAccept: application/json\r\n",'content'=>$payload,'timeout'=>8,'ignore_errors'=>true]]);
     @file_get_contents('https://exp.host/--/api/v2/push/send',false,$ctx);
 }
+function notifyAppointmentBarber(PDO $p,int $id): void {
+    try {
+        $q=$p->prepare("SELECT a.id,a.barber_id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,c.name AS customer_name,s.name AS service_name,b.name AS barber_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id JOIN barbers b ON b.id=a.barber_id WHERE a.id=?");
+        $q->execute([$id]); $a=$q->fetch(); if(!$a) return;
+        $q=$p->prepare('SELECT expo_push_token FROM barber_push_tokens WHERE barber_id=?'); $q->execute([(int)$a['barber_id']]); $token=(string)($q->fetchColumn()?:''); if($token==='') return;
+        $title='🔔 Novo agendamento';
+        $body="{$a['customer_name']} — {$a['service_name']} em {$a['date']} às {$a['time']}";
+        sendExpoPush($token,$title,$body,['appointment_id'=>(int)$a['id'],'barber_id'=>(int)$a['barber_id'],'status'=>'pending']);
+    } catch(Throwable $e) { error_log('Studio A.A barber push: '.$e->getMessage()); }
+}
 function notifyAppointmentCustomer(PDO $p,int $id,string $status): void {
     try {
         $q=$p->prepare("SELECT a.id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,c.phone,s.name AS service_name,b.name AS barber_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id JOIN barbers b ON b.id=a.barber_id WHERE a.id=?");
@@ -66,7 +78,7 @@ function getSchedule(PDO $p,int $barber): array {
 }
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/'; $method=$_SERVER['REQUEST_METHOD'];
 try {
-    if($path==='/api/health' && $method==='GET') out(['ok'=>true,'service'=>'Studio A.A API','version'=>'push-notifications-v13']);
+    if($path==='/api/health' && $method==='GET') out(['ok'=>true,'service'=>'Studio A.A API','version'=>'push-notifications-v14-barber']);
     if($path==='/api/services' && $method==='GET') out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
     if($path==='/api/barbers' && $method==='GET') out(db()->query("SELECT id,name,specialty,rating FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 
@@ -97,7 +109,7 @@ try {
             else{$q=$p->prepare('INSERT INTO customers(name,phone) VALUES(?,?) RETURNING id');$q->execute([$name,$phone]);$cid=(int)$q->fetchColumn();}
             $q=$p->prepare("INSERT INTO appointments(customer_id,service_id,barber_id,appointment_date,appointment_time,status) VALUES(?,?,?,?,?,'pending') RETURNING id");
             $q->execute([$cid,$service,$barber,$date,$time]);
-            $id=(int)$q->fetchColumn(); $p->commit(); out(['ok'=>true,'id'=>$id,'status'=>'pending'],201);
+            $id=(int)$q->fetchColumn(); $p->commit(); notifyAppointmentBarber($p,$id); out(['ok'=>true,'id'=>$id,'status'=>'pending'],201);
         } catch(Throwable $e) {
             if($p->inTransaction())$p->rollBack();
             out(['error'=>'Não foi possível criar o agendamento','detail'=>$e->getMessage()],500);
@@ -109,6 +121,15 @@ try {
         if(!preg_match('/^ExponentPushToken\[.+\]$/',$token)) out(['error'=>'Token Expo inválido'],422);
         $p=db(); $q=$p->prepare("INSERT INTO push_tokens(phone,expo_push_token,updated_at) VALUES(?,?,NOW()) ON CONFLICT(phone) DO UPDATE SET expo_push_token=EXCLUDED.expo_push_token,updated_at=NOW()"); $q->execute([$phone,$token]);
         out(['ok'=>true]);
+    }
+
+    if($path==='/api/barber/push/register' && $method==='POST') {
+        $d=body(); $barberId=(int)($d['barber_id']??0); $token=trim((string)($d['expo_push_token']??$d['expoPushToken']??''));
+        if($barberId<=0 || $token==='') out(['error'=>'barber_id e expo_push_token são obrigatórios'],422);
+        if(!preg_match('/^ExponentPushToken\[.+\]$/',$token)) out(['error'=>'Token Expo inválido'],422);
+        $p=db(); $check=$p->prepare('SELECT id FROM barbers WHERE id=? AND active=TRUE'); $check->execute([$barberId]); if(!$check->fetchColumn()) out(['error'=>'Barbeiro não encontrado ou inativo'],404);
+        $q=$p->prepare("INSERT INTO barber_push_tokens(barber_id,expo_push_token,updated_at) VALUES(?,?,NOW()) ON CONFLICT(barber_id) DO UPDATE SET expo_push_token=EXCLUDED.expo_push_token,updated_at=NOW()"); $q->execute([$barberId,$token]);
+        out(['ok'=>true,'barber_id'=>$barberId]);
     }
 
     // Cliente: consulta seus próprios agendamentos pelo telefone/WhatsApp
