@@ -25,6 +25,8 @@ function initDb(PDO $p): void {
     $p->exec("CREATE TABLE IF NOT EXISTS appointments(id BIGSERIAL PRIMARY KEY,customer_id BIGINT NOT NULL REFERENCES customers(id),service_id BIGINT NOT NULL REFERENCES services(id),barber_id BIGINT NOT NULL REFERENCES barbers(id),appointment_date DATE NOT NULL,appointment_time TIME NOT NULL,status appointment_status NOT NULL DEFAULT 'pending',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_appointments_barber_date ON appointments(barber_id,appointment_date)");
+    $p->exec("CREATE TABLE IF NOT EXISTS push_tokens(id BIGSERIAL PRIMARY KEY,phone VARCHAR(40) NOT NULL UNIQUE,expo_push_token TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE INDEX IF NOT EXISTS idx_push_tokens_phone ON push_tokens(phone)");
     $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules_v2(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,day_of_week INTEGER NOT NULL,start_time TIME,end_time TIME,break_start TIME,break_end TIME,active BOOLEAN NOT NULL DEFAULT TRUE,UNIQUE(barber_id,day_of_week))");
     foreach ([
         'day_of_week'=>'INTEGER', 'start_time'=>'TIME', 'end_time'=>'TIME',
@@ -39,6 +41,24 @@ function boolv($v): bool { if(is_bool($v)) return $v; $s=strtolower(trim((string
 function timev($v): ?string { $s=trim((string)$v); if($s==='') return null; if(preg_match('/^\d{1,2}:\d{2}$/',$s)){ [$h,$m]=array_map('intval',explode(':',$s)); if($h>=0&&$h<=23&&$m>=0&&$m<=59) return sprintf('%02d:%02d',$h,$m); } if(preg_match('/^\d{1,2}:\d{2}:\d{2}$/',$s)){ [$h,$m,$sec]=array_map('intval',explode(':',$s)); if($h>=0&&$h<=23&&$m>=0&&$m<=59&&$sec>=0&&$sec<=59) return sprintf('%02d:%02d:%02d',$h,$m,$sec); } return null; }
 function datev($v): ?string { $s=trim((string)$v); if($s==='') return null; if(preg_match('/^\d{4}-\d{2}-\d{2}$/',$s)){ $dt=DateTime::createFromFormat('Y-m-d',$s); return ($dt&&$dt->format('Y-m-d')===$s)?$s:null; } if(preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/',$s,$m)){ $dt=DateTime::createFromFormat('Y-m-d',"{$m[3]}-{$m[2]}-{$m[1]}"); return $dt?$dt->format('Y-m-d'):null; } return null; }
 function adminOk(): bool { return true; } // compatibilidade com o painel atual
+function sendExpoPush(string $token, string $title, string $message, array $data=[]): void {
+    if($token==='' || !preg_match('/^ExponentPushToken\[.+\]$/',$token)) return;
+    $payload=json_encode(['to'=>$token,'title'=>$title,'body'=>$message,'sound'=>'default','data'=>$data],JSON_UNESCAPED_UNICODE);
+    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Content-Type: application/json\r\nAccept: application/json\r\n",'content'=>$payload,'timeout'=>8,'ignore_errors'=>true]]);
+    @file_get_contents('https://exp.host/--/api/v2/push/send',false,$ctx);
+}
+function notifyAppointmentCustomer(PDO $p,int $id,string $status): void {
+    try {
+        $q=$p->prepare("SELECT a.id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,c.phone,s.name AS service_name,b.name AS barber_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id JOIN barbers b ON b.id=a.barber_id WHERE a.id=?");
+        $q->execute([$id]); $a=$q->fetch(); if(!$a) return;
+        $q=$p->prepare('SELECT expo_push_token FROM push_tokens WHERE phone=?'); $q->execute([$a['phone']]); $token=(string)($q->fetchColumn()?:''); if($token==='') return;
+        $labels=['pending'=>'Pendente','confirmed'=>'Confirmado','cancelled'=>'Cancelado','completed'=>'Concluído'];
+        $label=$labels[$status]??$status;
+        $title="Agendamento $label";
+        $body="{$a['service_name']} com {$a['barber_name']} — {$a['date']} às {$a['time']}";
+        sendExpoPush($token,$title,$body,['appointment_id'=>(int)$a['id'],'status'=>$status]);
+    } catch(Throwable $e) { error_log('Studio A.A push: '.$e->getMessage()); }
+}
 function getSchedule(PDO $p,int $barber): array {
     $q=$p->prepare("SELECT day_of_week AS weekday, day_of_week, active AS open, active, start_time AS start, start_time, end_time AS end, end_time, break_start, break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week");
     $q->execute([$barber]);
@@ -46,7 +66,7 @@ function getSchedule(PDO $p,int $barber): array {
 }
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/'; $method=$_SERVER['REQUEST_METHOD'];
 try {
-    if($path==='/api/health' && $method==='GET') out(['ok'=>true,'service'=>'Studio A.A API','version'=>'integrated-schedule-fix']);
+    if($path==='/api/health' && $method==='GET') out(['ok'=>true,'service'=>'Studio A.A API','version'=>'push-notifications-v13']);
     if($path==='/api/services' && $method==='GET') out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
     if($path==='/api/barbers' && $method==='GET') out(db()->query("SELECT id,name,specialty,rating FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 
@@ -83,6 +103,14 @@ try {
             out(['error'=>'Não foi possível criar o agendamento','detail'=>$e->getMessage()],500);
         }
     }
+    if($path==='/api/push/register' && $method==='POST') {
+        $d=body(); $phone=trim((string)($d['phone']??'')); $token=trim((string)($d['expo_push_token']??$d['expoPushToken']??''));
+        if($phone==='' || $token==='') out(['error'=>'phone e expo_push_token são obrigatórios'],422);
+        if(!preg_match('/^ExponentPushToken\[.+\]$/',$token)) out(['error'=>'Token Expo inválido'],422);
+        $p=db(); $q=$p->prepare("INSERT INTO push_tokens(phone,expo_push_token,updated_at) VALUES(?,?,NOW()) ON CONFLICT(phone) DO UPDATE SET expo_push_token=EXCLUDED.expo_push_token,updated_at=NOW()"); $q->execute([$phone,$token]);
+        out(['ok'=>true]);
+    }
+
     // Cliente: consulta seus próprios agendamentos pelo telefone/WhatsApp
     if($path==='/api/client/appointments' && $method==='GET') {
         $phone=trim((string)($_GET['phone']??$_GET['telefone']??''));
@@ -155,9 +183,11 @@ try {
         $map=['pending'=>'pending','confirmado'=>'confirmed','confirmed'=>'confirmed','cancelado'=>'cancelled','cancelled'=>'cancelled','concluido'=>'completed','concluído'=>'completed','completed'=>'completed'];
         $status=$map[strtolower(trim($status))]??'';
         if($status==='')out(['error'=>'Status inválido'],422);
-        $q=db()->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,(int)$m[1]]);
+        $p=db(); $id=(int)$m[1]; $oldq=$p->prepare('SELECT status FROM appointments WHERE id=?');$oldq->execute([$id]);$old=$oldq->fetchColumn();
+        $q=$p->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,$id]);
         if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);
-        out(['ok'=>true,'id'=>(int)$m[1],'status'=>$status]);
+        if((string)$old!==$status) notifyAppointmentCustomer($p,$id,$status);
+        out(['ok'=>true,'id'=>$id,'status'=>$status]);
     }
 
     if($path==='/api/admin/dashboard' && $method==='GET'){
@@ -185,13 +215,13 @@ try {
                 'services'=>(int)$p->query('SELECT COUNT(*) FROM services WHERE active=TRUE')->fetchColumn()];
         out(['stats'=>$stats]+$stats+['appointments'=>$appointments]);
     }
-    if(($path==='/api/admin/cancel'||$path==='/api/admin/reactivate') && $method==='POST'){$d=body();$id=(int)($d['id']??0);if($id<=0)out(['error'=>'ID inválido'],422);$status=$path==='/api/admin/cancel'?'cancelled':'pending';$q=db()->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id");$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
+    if(($path==='/api/admin/cancel'||$path==='/api/admin/reactivate') && $method==='POST'){$d=body();$id=(int)($d['id']??0);if($id<=0)out(['error'=>'ID inválido'],422);$status=$path==='/api/admin/cancel'?'cancelled':'pending';$p=db();$oldq=$p->prepare('SELECT status FROM appointments WHERE id=?');$oldq->execute([$id]);$old=$oldq->fetchColumn();$q=$p->prepare("UPDATE appointments SET status=? WHERE id=? RETURNING id");$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);if((string)$old!==$status)notifyAppointmentCustomer($p,$id,$status);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
     if($path==='/api/admin/clear-history' && $method==='POST') {
         $p=db();
         $q=$p->query("DELETE FROM appointments WHERE status IN ('cancelled','completed') RETURNING id");
         $ids=$q->fetchAll(PDO::FETCH_COLUMN);
         out(['ok'=>true,'deleted'=>(int)count($ids),'ids'=>array_map('intval',$ids)]);
     }
-    if($path==='/api/admin/status' && $method==='POST'){$d=body();$id=(int)($d['id']??0);$status=(string)($d['status']??'');if($id<=0||!in_array($status,['pending','confirmed','cancelled','completed'],true))out(['error'=>'Status inválido'],422);$q=db()->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
+    if($path==='/api/admin/status' && $method==='POST'){$d=body();$id=(int)($d['id']??0);$status=(string)($d['status']??'');if($id<=0||!in_array($status,['pending','confirmed','cancelled','completed'],true))out(['error'=>'Status inválido'],422);$p=db();$oldq=$p->prepare('SELECT status FROM appointments WHERE id=?');$oldq->execute([$id]);$old=$oldq->fetchColumn();$q=$p->prepare('UPDATE appointments SET status=? WHERE id=? RETURNING id');$q->execute([$status,$id]);if(!$q->fetch())out(['error'=>'Agendamento não encontrado'],404);if((string)$old!==$status)notifyAppointmentCustomer($p,$id,$status);out(['ok'=>true,'id'=>$id,'status'=>$status]);}
     out(['error'=>'Rota não encontrada'],404);
 }catch(Throwable $e){out(['error'=>'Erro interno','detail'=>$e->getMessage()],500);}
