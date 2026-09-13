@@ -83,6 +83,24 @@ try {
             out(['error'=>'Não foi possível criar o agendamento','detail'=>$e->getMessage()],500);
         }
     }
+    // Cliente: consulta seus próprios agendamentos pelo telefone/WhatsApp
+    if($path==='/api/client/appointments' && $method==='GET') {
+        $phone=trim((string)($_GET['phone']??$_GET['telefone']??''));
+        if($phone==='') out(['error'=>'Telefone é obrigatório'],422);
+        $q=db()->prepare("SELECT a.id,a.barber_id,a.service_id,a.customer_id,
+                    TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,
+                    TO_CHAR(a.appointment_time,'HH24:MI') AS time,
+                    a.status,c.name AS customer_name,c.phone AS customer_phone,
+                    b.name AS barber_name,s.name AS service_name,s.duration,s.price
+             FROM appointments a
+             JOIN customers c ON c.id=a.customer_id
+             JOIN barbers b ON b.id=a.barber_id
+             JOIN services s ON s.id=a.service_id
+             WHERE c.phone=?
+             ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC");
+        $q->execute([$phone]); out($q->fetchAll());
+    }
+
     if($path==='/api/availability' && $method==='GET') {
         $bid=(int)($_GET['barber_id']??0);$date=trim((string)($_GET['date']??''));if($bid<=0||$date==='')out(['error'=>'barber_id e date são obrigatórios'],422);
         $q=db()->prepare("SELECT a.id,a.appointment_date AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,a.barber_id,b.name AS barber_name,c.name AS customer_name,c.phone AS customer_phone,s.name AS service_name,a.status FROM appointments a JOIN barbers b ON b.id=a.barber_id JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? AND a.status IN ('pending','confirmed') ORDER BY a.appointment_time");$q->execute([$bid,$date]);$appointments=$q->fetchAll();
