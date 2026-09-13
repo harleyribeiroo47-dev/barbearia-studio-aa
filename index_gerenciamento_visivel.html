@@ -31,9 +31,6 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .notice{margin-top:12px;padding:12px;border-radius:12px;background:#151515;border:1px solid #2b2b2b;color:#aaa;font-size:13px}.notice.ok{border-color:#245a34;color:#bde8c7}.notice.err{border-color:#642b2b;color:#ffc0c0}
 .admin{display:none;margin-top:22px;padding:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:17px;border-radius:16px;background:#151515;border:1px solid #2b2b2b}.stat b{font-size:25px;display:block;margin-top:4px}.table{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden}.table .item{background:#111}.footer{margin-top:30px;text-align:center;color:#777;font-size:12px;padding:20px}
 @media(max-width:780px){.hero{grid-template-columns:1fr}.heroMedia{min-height:300px;height:300px;padding:20px}.grid{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:1fr 1fr}.heroCopy{padding:25px}}
-.agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.agendaActions .btn{padding:7px 9px;font-size:10px}.btn.confirm{border-color:#245b36;color:#7ee787}.btn.complete{border-color:#24506b;color:#7dd3fc}.btn.reactivate{border-color:#6b531d;color:#f0c85a}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
-
-.manageGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.manageCard{background:#111;border:1px solid #2b2b2b;border-radius:16px;padding:16px}.manageCard h3{margin:0 0 12px;font-size:14px;color:var(--gold)}.manageRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.manageRow.three{grid-template-columns:1fr 1fr 1fr}.manageRow.four{grid-template-columns:1.2fr .7fr .7fr .7fr}.smallBtn{padding:8px 10px;font-size:11px}.scheduleTable{width:100%;border-collapse:collapse;font-size:12px}.scheduleTable th,.scheduleTable td{padding:7px;border-bottom:1px solid #252525;text-align:left}.scheduleTable input,.scheduleTable select{width:100%;background:#090909;color:#fff;border:1px solid #333;border-radius:8px;padding:7px}.check{width:auto!important}.manageList{max-height:360px;overflow:auto}.manageItem{padding:10px 0;border-bottom:1px solid #252525}.manageItem:last-child{border-bottom:0}.manageActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}@media(max-width:780px){.manageGrid{grid-template-columns:1fr}.manageRow,.manageRow.three,.manageRow.four{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -71,21 +68,6 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
   </div>
   <div id="dashboard" style="display:none">
     <div class="stats"><div class="stat">Hoje<b id="sToday">0</b><span class="muted">atendimentos</span></div><div class="stat">Clientes<b id="sClients">0</b><span class="muted">cadastrados</span></div><div class="stat">Barbeiros<b id="sBarbers">0</b><span class="muted">ativos</span></div><div class="stat">Serviços<b id="sServices">0</b><span class="muted">disponíveis</span></div></div>
-    <div class="actions" style="margin-top:12px"><button class="btn primary" type="button" onclick="document.querySelector('#managementArea').scrollIntoView({behavior:'smooth'})">⚙️ GERENCIAR BARBEIROS, CORTES, VALORES E HORÁRIOS</button></div>
-    <div id="managementArea" class="sectionTitle" style="margin-top:24px">GERENCIAR BARBEIROS, SERVIÇOS E HORÁRIOS</div>
-    <div class="manageGrid">
-      <div class="manageCard"><h3>BARBEIROS</h3><div id="manageBarbers" class="manageList"></div><button class="btn primary smallBtn" type="button" onclick="newBarberForm()">+ NOVO BARBEIRO</button></div>
-      <div class="manageCard"><h3>SERVIÇOS / CORTES E VALORES</h3><div id="manageServices" class="manageList"></div><button class="btn primary smallBtn" type="button" onclick="newServiceForm()">+ NOVO SERVIÇO</button></div>
-    </div>
-    <div class="manageCard" style="margin-top:14px"><h3>HORÁRIOS DE ATENDIMENTO POR BARBEIRO</h3><div class="field"><label>Barbeiro</label><select id="scheduleBarber" onchange="loadScheduleEditor()"></select></div><div id="scheduleEditor" style="margin-top:12px"></div></div>
-    <div class="sectionTitle" style="margin-top:20px">AGENDA DO DIA</div>
-    <div class="agendaTools">
-      <div class="field"><label>Data da agenda</label><input id="agendaDate" type="date"></div>
-      <div class="field"><label>Barbeiro</label><select id="agendaBarber"><option value="">Todos os barbeiros</option></select></div>
-      <button class="btn" type="button" onclick="renderAgenda()">ATUALIZAR</button>
-    </div>
-    <div class="agenda" id="agenda"></div>
-    <div class="sectionTitle" style="margin-top:20px">TODOS OS AGENDAMENTOS</div>
     <div class="table" id="appointments"></div>
     <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div>
   </div>
@@ -107,11 +89,9 @@ const fallbackBarbers=[
  {id:3,name:"Thiago",specialty:"Corte masculino",rating:4.7},
  {id:4,name:"Matheus",specialty:"Estilo clássico",rating:4.9}
 ];
-const times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
+const times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
 let services=[...fallbackServices], barbers=[...fallbackBarbers], chosenTime="";
-let publicSchedule=null;
-let adminPassword="", agendaAppointments=[], barberSchedules={};
-
+let publicSchedule=null, scheduleRequestSeq=0, availabilityRequestSeq=0;
 
 function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
@@ -123,6 +103,7 @@ function render(){
  renderSlots();
 }
 let bookedAppointments=[];
+let adminPassword="";
 
 function normalizeAppointment(a){
  return {
@@ -149,44 +130,67 @@ function extractAppointments(value,out=[]){
  return out;
 }
 
+function toMin(v){const [h,m]=String(v||"").slice(0,5).split(":").map(Number);return (Number.isFinite(h)?h:0)*60+(Number.isFinite(m)?m:0)}
+function isTimeInSchedule(t,s){
+ if(!s||s.active===false||s.open===false)return false;
+ const x=toMin(t), start=toMin(s.start_time??s.start), end=toMin(s.end_time??s.end);
+ const bs=toMin(s.break_start), be=toMin(s.break_end);
+ return x>=start && x<=end && !(bs<be && x>=bs && x<be);
+}
+
 function isBooked(barberId,date,time){
  return bookedAppointments.some(a=>{
   const sameDate=String(a.date||"").slice(0,10)===String(date||"").slice(0,10);
   const sameTime=String(a.time||"").slice(0,5)===String(time||"").slice(0,5);
   const sameBarber=a.barber_id!=null ? Number(a.barber_id)===Number(barberId) : true;
-  const active=!["cancelado","cancelada","canceled","cancelled"].includes(String(a.status||"").toLowerCase());
+  const active=!['cancelado','cancelada','canceled','cancelled'].includes(String(a.status||"").toLowerCase());
   return sameDate&&sameTime&&sameBarber&&active;
  });
-}
-
-function isTimeInSchedule(t,s){
- if(!s||s.open===false)return false;
- const toMin=v=>{const [h,m]=String(v||'').slice(0,5).split(':').map(Number);return (h||0)*60+(m||0)};
- const x=toMin(t), start=toMin(s.start), end=toMin(s.end), bs=toMin(s.break_start), be=toMin(s.break_end);
- return x>=start && x<end && !(bs<be && x>=bs && x<be);
-}
-async function loadPublicSchedule(){
- const date=document.querySelector('#date').value, barberId=document.querySelector('#barber').value;
- if(!API||!date||!barberId){publicSchedule=null;renderSlots();return;}
- try{const wd=new Date(date+'T12:00:00').getDay();const data=await api(`/api/schedule?barber_id=${encodeURIComponent(barberId)}&weekday=${wd}`);publicSchedule=data.schedule||null;}catch(e){publicSchedule=null;}
- renderSlots();
 }
 
 function renderSlots(){
  const date=document.querySelector("#date").value;
  const barberId=document.querySelector("#barber").value;
+ const slots=document.querySelector("#slots");
+ if(!date||!barberId){slots.innerHTML="";return;}
+ if(!publicSchedule){slots.innerHTML='<div class="notice">Carregando horário de atendimento...</div>';return;}
+ if(publicSchedule.active===false||publicSchedule.open===false){
+  chosenTime="";
+  slots.innerHTML='<div class="notice err">Este barbeiro não atende nesta data.</div>';
+  return;
+ }
  const visibleTimes=times.filter(t=>isTimeInSchedule(t,publicSchedule));
- document.querySelector("#slots").innerHTML=visibleTimes.map(t=>{
+ if(!visibleTimes.length){chosenTime="";slots.innerHTML='<div class="notice err">Não há horários disponíveis para este dia.</div>';return;}
+ slots.innerHTML=visibleTimes.map(t=>{
   const busy=isBooked(barberId,date,t);
   return `<button type="button" class="slot ${chosenTime===t&&!busy?"active":""} ${busy?"disabled":""}" ${busy?"disabled":""} title="${busy?"Horário já reservado":"Selecionar horário"}" onclick="${busy?"":"chooseTime('"+t+"')"}">${t}</button>`;
  }).join("");
- if(chosenTime&&isBooked(barberId,date,chosenTime))chosenTime="";
+ if(chosenTime&&(!visibleTimes.includes(chosenTime)||isBooked(barberId,date,chosenTime)))chosenTime="";
 }
 
 function chooseTime(t){
+ if(!isTimeInSchedule(t,publicSchedule))return;
  if(isBooked(document.querySelector("#barber").value,document.querySelector("#date").value,t))return;
  chosenTime=t;
  renderSlots();
+}
+
+async function loadPublicSchedule(){
+ const date=document.querySelector("#date").value;
+ const barberId=document.querySelector("#barber").value;
+ const req=++scheduleRequestSeq;
+ if(!date||!barberId){publicSchedule=null;renderSlots();return;}
+ const wd=new Date(date+"T12:00:00").getDay();
+ try{
+  const data=await api(`/api/schedules?barber_id=${encodeURIComponent(barberId)}`);
+  if(req!==scheduleRequestSeq||document.querySelector("#date").value!==date||document.querySelector("#barber").value!==String(barberId))return;
+  const rows=Array.isArray(data)?data:[];
+  publicSchedule=rows.find(x=>Number(x.day_of_week)===wd)||null;
+ }catch(e){
+  console.warn("Não foi possível consultar o horário de atendimento.",e);
+  if(req===scheduleRequestSeq)publicSchedule=null;
+ }
+ if(req===scheduleRequestSeq)renderSlots();
 }
 
 function showBooking(){
@@ -208,14 +212,16 @@ async function api(path,options={}){
 async function loadBookedAppointments(){
  const date=document.querySelector("#date").value;
  const barberId=document.querySelector("#barber").value;
+ const req=++availabilityRequestSeq;
  if(!API||!date||!barberId){bookedAppointments=[];renderSlots();return;}
  try{
   const data=await api(`/api/availability?barber_id=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`);
+  if(req!==availabilityRequestSeq||document.querySelector("#date").value!==date||document.querySelector("#barber").value!==String(barberId))return;
   bookedAppointments=Array.isArray(data.appointments)?data.appointments.map(normalizeAppointment):[];
   renderSlots();
  }catch(e){
   console.warn("Não foi possível consultar a disponibilidade.",e);
-  bookedAppointments=[];
+  if(req===availabilityRequestSeq)bookedAppointments=[];
   renderSlots();
  }
 }
@@ -226,7 +232,6 @@ async function loadApi(){
   services=await api("/api/services");
   barbers=await api("/api/barbers");
   render();
-  await loadPublicSchedule();
   await loadBookedAppointments();
  }catch(e){
   console.warn("API indisponível; usando dados locais.",e);
@@ -234,16 +239,29 @@ async function loadApi(){
 }
 
 async function confirmBooking(){
+ const selectedDate=document.querySelector("#date").value;
+ const selectedBarber=Number(document.querySelector("#barber").value);
+ const selectedTime=chosenTime;
  const payload={
   service_id:Number(document.querySelector("#service").value),
-  barber_id:Number(document.querySelector("#barber").value),
+  barber_id:selectedBarber,
   customer_name:document.querySelector("#name").value.trim(),
   customer_phone:document.querySelector("#phone").value.trim(),
-  date:document.querySelector("#date").value,
-  time:chosenTime
+  date:selectedDate,
+  time:selectedTime
  };
  if(!payload.customer_name||!payload.customer_phone||!payload.date||!payload.time){
   document.querySelector("#message").innerHTML='<div class="notice err">Preencha nome, WhatsApp, data e horário.</div>';
+  return;
+ }
+ if(document.querySelector("#date").value!==selectedDate||Number(document.querySelector("#barber").value)!==selectedBarber||chosenTime!==selectedTime){
+  document.querySelector("#message").innerHTML='<div class="notice err">A data, barbeiro ou horário foi alterado. Selecione novamente.</div>';
+  return;
+ }
+ if(!publicSchedule||publicSchedule.active===false||publicSchedule.open===false||!isTimeInSchedule(selectedTime,publicSchedule)){
+  document.querySelector("#message").innerHTML='<div class="notice err">Este barbeiro está fechado neste dia ou o horário escolhido está fora do expediente.</div>';
+  chosenTime="";
+  renderSlots();
   return;
  }
  if(isBooked(payload.barber_id,payload.date,payload.time)){
@@ -296,24 +314,17 @@ async function loadDashboard(){
  try{
   const data=await api("/api/admin/dashboard",{headers:{"X-Admin-Password":adminPassword}});
   const list=Array.isArray(data.appointments)?data.appointments:[];
-  agendaAppointments=list;
   const stats=data.stats||{};
   document.querySelector("#sToday").textContent=Number(stats.today||0);
   document.querySelector("#sClients").textContent=Number(stats.clients||0);
   document.querySelector("#sBarbers").textContent=Number(stats.barbers||0);
   document.querySelector("#sServices").textContent=Number(stats.services||0);
-  const ab=document.querySelector("#agendaBarber");
-  ab.innerHTML='<option value="">Todos os barbeiros</option>'+barbers.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("");
-  const ad=document.querySelector("#agendaDate");
-  if(!ad.value)ad.value=new Date().toISOString().slice(0,10);
-  renderAgenda();
-  await loadManagement();
   document.querySelector("#appointments").innerHTML=list.length?
    list.map(a=>{
-    const status=String(a.status||"pending").toLowerCase();
+    const status=String(a.status||"pending");
     const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído",cancelled:"Cancelado"}[status]||status;
     const cancelled=status==="cancelled";
-    return `<div class="item"><span><strong>#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")}</span></span><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="price">${esc(label)}</span>${statusActions(a)}</span></div>`;
+    return `<div class="item"><span><strong>#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</strong><span class="muted">${esc(a.date||"")} • ${esc(a.time||"")} • ${esc(a.customer_phone||"")} • ${esc(a.barber_name||"")} • ${esc(a.service_name||"")}</span></span><span style="display:flex;align-items:center;gap:8px"><span class="price">${esc(label)}</span>${cancelled?"":`<button class="btn danger" style="padding:8px 10px" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`}</span></div>`;
    }).join(""):
    '<div class="item"><span class="muted">Nenhum agendamento encontrado.</span></div>';
  }catch(e){
@@ -322,49 +333,6 @@ async function loadDashboard(){
  }
 }
 
-function statusActions(a){
- const status=String(a.status||"pending").toLowerCase();
- if(status==="cancelled") return `<button class="btn reactivate" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'pending')">REATIVAR</button>`;
- if(status==="pending") return `<button class="btn confirm" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'confirmed')">CONFIRMAR</button><button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
- if(status==="confirmed") return `<button class="btn complete" type="button" onclick="changeAppointmentStatus(${Number(a.id)},'completed')">CONCLUÍDO</button><button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
- if(status==="completed") return `<span class="muted">Atendimento finalizado</span>`;
- return `<button class="btn danger" type="button" onclick="cancelAppointment(${Number(a.id)})">CANCELAR</button>`;
-}
-
-async function changeAppointmentStatus(id,status){
- if(!adminPassword)return;
- const labels={confirmed:"confirmar",completed:"marcar como concluído",pending:"reativar"};
- if(!confirm(`Deseja ${labels[status]||"alterar o status de"} o agendamento #${id}?`))return;
- try{
-  await api("/api/admin/status",{method:"POST",headers:{"X-Admin-Password":adminPassword},body:JSON.stringify({id,status})});
-  await loadDashboard();
-  await loadBookedAppointments();
- }catch(e){alert("Não foi possível alterar o status do agendamento.");}
-}
-
-function renderAgenda(){
- const box=document.querySelector("#agenda");
- if(!box)return;
- const date=document.querySelector("#agendaDate").value;
- const barberId=document.querySelector("#agendaBarber").value;
- const active=agendaAppointments.filter(a=>{
-  const status=String(a.status||"pending").toLowerCase();
-  const sameDate=String(a.date||"").slice(0,10)===String(date||"").slice(0,10);
-  const sameBarber=!barberId || Number(a.barber_id)===Number(barberId);
-  return sameDate && sameBarber && status!=="cancelled";
- });
- const byTime={};
- active.forEach(a=>{const t=String(a.time||"").slice(0,5);if(t)byTime[t]=a});
- const labelDate=date?new Date(date+"T12:00:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"}):"Escolha uma data";
- const slots=times.map(t=>{
-  const a=byTime[t];
-  if(!a)return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaFree">Horário livre</div></div></div>`;
-  const status=String(a.status||"pending").toLowerCase();
-  const label={pending:"Pendente",confirmed:"Confirmado",completed:"Concluído"}[status]||status;
-  return `<div class="agendaSlot"><div class="agendaTime">${t}</div><div class="agendaInfo"><div class="agendaClient">#${esc(a.id)} — ${esc(a.customer_name||"Cliente")}</div><div class="agendaMeta">${esc(a.service_name||"Serviço")} • ${esc(a.barber_name||"Barbeiro")}</div><div class="agendaMeta">${esc(a.customer_phone||"")}</div><span class="status ${esc(status)}">${esc(label)}</span><div class="agendaActions">${statusActions(a)}</div></div></div>`;
- }).join("");
- box.innerHTML=`<div class="agendaHeader"><span class="agendaDay">${esc(labelDate)}</span><span class="muted">${active.length} atendimento(s)</span></div><div class="agendaGrid">${slots}</div>`;
-}
 async function cancelAppointment(id){
  if(!adminPassword)return;
  if(!confirm(`Cancelar o agendamento #${id}?`))return;
@@ -375,56 +343,6 @@ async function cancelAppointment(id){
  }catch(e){alert("Não foi possível cancelar o agendamento.");}
 }
 
-async function loadManagement(){
- try{
-  const bdata=await api('/api/admin/barbers',{headers:{'X-Admin-Password':adminPassword}});
-  const sdata=await api('/api/admin/services',{headers:{'X-Admin-Password':adminPassword}});
-  barbers=Array.isArray(bdata)?bdata:barbers;
-  services=Array.isArray(sdata)?sdata:services;
-  render();
-  renderManageBarbers(); renderManageServices();
-  const sb=document.querySelector('#scheduleBarber');
-  sb.innerHTML=barbers.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
-  await loadScheduleEditor();
- }catch(e){ console.warn(e); }
-}
-function renderManageBarbers(){
- const box=document.querySelector('#manageBarbers'); if(!box)return;
- box.innerHTML=barbers.map(b=>`<div class="manageItem"><div class="manageRow three"><input id="bn_${b.id}" value="${esc(b.name)}" placeholder="Nome"><input id="bs_${b.id}" value="${esc(b.specialty||'')}" placeholder="Especialidade"><input id="br_${b.id}" type="number" min="0" max="5" step="0.1" value="${esc(b.rating??5)}" placeholder="Nota"></div><label class="muted"><input class="check" id="ba_${b.id}" type="checkbox" ${b.active!==false?'checked':''}> Ativo</label><div class="manageActions"><button class="btn smallBtn" onclick="saveBarber(${Number(b.id)})">SALVAR BARBEIRO</button></div></div>`).join('');
-}
-function renderManageServices(){
- const box=document.querySelector('#manageServices'); if(!box)return;
- box.innerHTML=services.map(s=>`<div class="manageItem"><div class="manageRow three"><input id="sn_${s.id}" value="${esc(s.name)}" placeholder="Nome do serviço"><input id="sd_${s.id}" type="number" min="5" value="${esc(s.duration)}" placeholder="Minutos"><input id="sp_${s.id}" type="number" min="0" step="0.01" value="${esc(s.price)}" placeholder="Valor"></div><label class="muted"><input class="check" id="sa_${s.id}" type="checkbox" ${s.active!==false?'checked':''}> Disponível</label><div class="manageActions"><button class="btn smallBtn" onclick="saveService(${Number(s.id)})">SALVAR SERVIÇO</button></div></div>`).join('');
-}
-async function saveBarber(id){
- const payload={id,name:document.querySelector(`#bn_${id}`).value.trim(),specialty:document.querySelector(`#bs_${id}`).value.trim(),rating:Number(document.querySelector(`#br_${id}`).value||5),active:document.querySelector(`#ba_${id}`).checked};
- try{await api('/api/admin/barbers',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify(payload)});await loadManagement();alert('Barbeiro atualizado.');}catch(e){alert('Não foi possível atualizar o barbeiro.');}
-}
-async function saveService(id){
- const payload={id,name:document.querySelector(`#sn_${id}`).value.trim(),duration:Number(document.querySelector(`#sd_${id}`).value||30),price:Number(document.querySelector(`#sp_${id}`).value||0),active:document.querySelector(`#sa_${id}`).checked};
- try{await api('/api/admin/services',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify(payload)});await loadManagement();alert('Serviço atualizado.');}catch(e){alert('Não foi possível atualizar o serviço.');}
-}
-function newBarberForm(){
- const box=document.querySelector('#manageBarbers');box.insertAdjacentHTML('afterbegin',`<div class="manageItem"><div class="manageRow three"><input id="newBN" placeholder="Nome"><input id="newBS" placeholder="Especialidade"><input id="newBR" type="number" min="0" max="5" step="0.1" value="5"></div><div class="manageActions"><button class="btn primary smallBtn" onclick="createBarber()">CRIAR</button></div></div>`);
-}
-async function createBarber(){try{await api('/api/admin/barbers',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({name:document.querySelector('#newBN').value.trim(),specialty:document.querySelector('#newBS').value.trim(),rating:Number(document.querySelector('#newBR').value||5),active:true})});await loadManagement();alert('Barbeiro criado.');}catch(e){alert('Não foi possível criar o barbeiro.');}}
-function newServiceForm(){
- const box=document.querySelector('#manageServices');box.insertAdjacentHTML('afterbegin',`<div class="manageItem"><div class="manageRow three"><input id="newSN" placeholder="Nome do serviço"><input id="newSD" type="number" min="5" value="30"><input id="newSP" type="number" min="0" step="0.01" value="35"></div><div class="manageActions"><button class="btn primary smallBtn" onclick="createService()">CRIAR</button></div></div>`);
-}
-async function createService(){try{await api('/api/admin/services',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({name:document.querySelector('#newSN').value.trim(),duration:Number(document.querySelector('#newSD').value||30),price:Number(document.querySelector('#newSP').value||0),active:true})});await loadManagement();alert('Serviço criado.');}catch(e){alert('Não foi possível criar o serviço.');}}
-async function loadScheduleEditor(){
- const id=document.querySelector('#scheduleBarber')?.value; const box=document.querySelector('#scheduleEditor'); if(!id||!box)return;
- try{const data=await api(`/api/admin/schedule?barber_id=${encodeURIComponent(id)}`,{headers:{'X-Admin-Password':adminPassword}}); barberSchedules[id]=data.schedule||[];
- const map={}; (data.schedule||[]).forEach(x=>map[x.weekday]=x);
- const days=[['1','Segunda'],['2','Terça'],['3','Quarta'],['4','Quinta'],['5','Sexta'],['6','Sábado'],['0','Domingo']];
- box.innerHTML=`<table class="scheduleTable"><thead><tr><th>Dia</th><th>Aberto</th><th>Início</th><th>Fim</th><th>Intervalo início</th><th>Intervalo fim</th></tr></thead><tbody>${days.map(([d,n])=>{const x=map[d]||{open:d!=='0',start:'09:00',end:'18:00',break_start:'12:30',break_end:'14:00'};return `<tr><td>${n}</td><td><input class="check" type="checkbox" id="open_${d}" ${x.open?'checked':''}></td><td><input type="time" id="start_${d}" value="${esc(String(x.start||'09:00').slice(0,5))}"></td><td><input type="time" id="end_${d}" value="${esc(String(x.end||'18:00').slice(0,5))}"></td><td><input type="time" id="bs_${d}" value="${esc(String(x.break_start||'12:30').slice(0,5))}"></td><td><input type="time" id="be_${d}" value="${esc(String(x.break_end||'14:00').slice(0,5))}"></td></tr>`}).join('')}</tbody></table><div class="manageActions"><button class="btn primary" onclick="saveSchedule(${Number(id)})">SALVAR HORÁRIOS</button></div>`;
- }catch(e){box.innerHTML='<div class="notice err">Não foi possível carregar os horários.</div>';}
-}
-async function saveSchedule(barberId){
- const days=['1','2','3','4','5','6','0']; const schedule=days.map(d=>({weekday:Number(d),open:document.querySelector(`#open_${d}`).checked,start:document.querySelector(`#start_${d}`).value,end:document.querySelector(`#end_${d}`).value,break_start:document.querySelector(`#bs_${d}`).value,break_end:document.querySelector(`#be_${d}`).value}));
- try{await api('/api/admin/schedule',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({barber_id:Number(barberId),schedule})});alert('Horários salvos.');}catch(e){alert('Não foi possível salvar os horários.');}
-}
-
 function adminLogout(){
  adminPassword="";
  document.querySelector("#dashboard").style.display="none";
@@ -432,9 +350,10 @@ function adminLogout(){
  document.querySelector("#adminPass").value="";
 }
 
-document.querySelector("#date").min=new Date().toISOString().slice(0,10);
-document.querySelector("#date").addEventListener("change",()=>{chosenTime="";loadPublicSchedule();loadBookedAppointments()});
-document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";loadPublicSchedule();loadBookedAppointments()});
+function localToday(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+document.querySelector("#date").min=localToday();
+document.querySelector("#date").addEventListener("change",()=>{chosenTime="";scheduleRequestSeq++;availabilityRequestSeq++;publicSchedule=null;bookedAppointments=[];renderSlots();loadPublicSchedule();loadBookedAppointments()});
+document.querySelector("#barber").addEventListener("change",()=>{chosenTime="";scheduleRequestSeq++;availabilityRequestSeq++;publicSchedule=null;bookedAppointments=[];renderSlots();loadPublicSchedule();loadBookedAppointments()});
 render();loadApi();
 if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");
 </script>
