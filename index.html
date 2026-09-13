@@ -85,7 +85,7 @@ function renderGallery(){
 }
 function setGalleryCat(c){galleryCat=c;renderGallery()}
 
-const API="https://studio-aa-api.onrender.com",times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30"];
+const API="https://studio-aa-api.onrender.com",times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
 let services=[],barbers=[],chosenTime="",booked=[];
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 async function api(path,opt={}){const r=await fetch(API+path,{headers:{"Content-Type":"application/json",...(opt.headers||{})},...opt}),t=await r.text();let d;try{d=JSON.parse(t)}catch{d={error:t}}if(!r.ok)throw Error(d.error||t||"Erro");return d}
