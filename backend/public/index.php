@@ -28,6 +28,8 @@ function initDb(PDO $p): void {
     $p->exec("CREATE TABLE IF NOT EXISTS push_tokens(id BIGSERIAL PRIMARY KEY,phone VARCHAR(40) NOT NULL UNIQUE,expo_push_token TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_push_tokens_phone ON push_tokens(phone)");
     $p->exec("CREATE TABLE IF NOT EXISTS barber_push_tokens(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL UNIQUE REFERENCES barbers(id) ON DELETE CASCADE,expo_push_token TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE TABLE IF NOT EXISTS barber_accounts(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL UNIQUE REFERENCES barbers(id) ON DELETE CASCADE,password_hash TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+    $p->exec("CREATE TABLE IF NOT EXISTS barber_sessions(token_hash CHAR(64) PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),expires_at TIMESTAMPTZ NOT NULL)");
     $p->exec("CREATE INDEX IF NOT EXISTS idx_barber_push_tokens_barber ON barber_push_tokens(barber_id)");
     $p->exec("CREATE TABLE IF NOT EXISTS studio_aa_schedules_v2(id BIGSERIAL PRIMARY KEY,barber_id BIGINT NOT NULL REFERENCES barbers(id) ON DELETE CASCADE,day_of_week INTEGER NOT NULL,start_time TIME,end_time TIME,break_start TIME,break_end TIME,active BOOLEAN NOT NULL DEFAULT TRUE,UNIQUE(barber_id,day_of_week))");
     foreach ([
@@ -75,6 +77,25 @@ function getSchedule(PDO $p,int $barber): array {
     $q=$p->prepare("SELECT day_of_week AS weekday, day_of_week, active AS open, active, start_time AS start, start_time, end_time AS end, end_time, break_start, break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week");
     $q->execute([$barber]);
     return $q->fetchAll();
+}
+function bearerToken(): string {
+    $h=(string)($_SERVER['HTTP_AUTHORIZATION']??'');
+    if(preg_match('/^Bearer\s+(.+)$/i',$h,$m)) return trim($m[1]);
+    return '';
+}
+function barberAuth(PDO $p): array {
+    $token=bearerToken();
+    if($token==='') out(['error'=>'Não autenticado'],401);
+    $hash=hash('sha256',$token);
+    $q=$p->prepare("SELECT s.barber_id,b.name FROM barber_sessions s JOIN barbers b ON b.id=s.barber_id WHERE s.token_hash=? AND s.expires_at>NOW() AND b.active=TRUE");
+    $q->execute([$hash]); $row=$q->fetch();
+    if(!$row) out(['error'=>'Sessão expirada ou inválida'],401);
+    return ['barber_id'=>(int)$row['barber_id'],'name'=>(string)$row['name']];
+}
+function barberOnlyName(PDO $p,int $barberId): void {
+    $q=$p->prepare("SELECT UPPER(name) FROM barbers WHERE id=?"); $q->execute([$barberId]);
+    $name=(string)($q->fetchColumn()?:'');
+    if(!in_array($name,['ALBERI','ALEX'],true)) out(['error'=>'Acesso disponível apenas para ALBERI e ALEX nesta versão'],403);
 }
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/'; $method=$_SERVER['REQUEST_METHOD'];
 try {
@@ -124,7 +145,9 @@ try {
     }
 
     if($path==='/api/barber/push/register' && $method==='POST') {
+        $p=db(); $auth=barberAuth($p);
         $d=body(); $barberId=(int)($d['barber_id']??0); $token=trim((string)($d['expo_push_token']??$d['expoPushToken']??''));
+        if($barberId!==$auth['barber_id']) out(['error'=>'Token não autorizado para este barbeiro'],403);
         if($barberId<=0 || $token==='') out(['error'=>'barber_id e expo_push_token são obrigatórios'],422);
         if(!preg_match('/^ExponentPushToken\[.+\]$/',$token)) out(['error'=>'Token Expo inválido'],422);
         $p=db(); $check=$p->prepare('SELECT id FROM barbers WHERE id=? AND active=TRUE'); $check->execute([$barberId]); if(!$check->fetchColumn()) out(['error'=>'Barbeiro não encontrado ou inativo'],404);
@@ -158,6 +181,47 @@ try {
         try { $dow=(int)(new DateTime($date))->format('w'); $sq=db()->prepare("SELECT active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? AND day_of_week=? LIMIT 1"); $sq->execute([$bid,$dow]); $sch=$sq->fetch(); if($sch && (bool)$sch['active']) { $start=$sch['start_time']; $end=$sch['end_time']; for($m=0;$m<1440;$m+=30){$hh=intdiv($m,60);$mm=$m%60;$t=sprintf('%02d:%02d',$hh,$mm); if($t<$start||$t>$end) continue; if($sch['break_start'] && $sch['break_end'] && $t>=$sch['break_start'] && $t<$sch['break_end']) continue; $busy=false; foreach($appointments as $a){if(substr((string)$a['time'],0,5)===$t){$busy=true;break;}} if(!$busy)$available[]=$t;}} } catch(Throwable $e) {}
         out(['appointments'=>$appointments,'available_times'=>$available]);
     }
+    if($path==='/api/barber/login' && $method==='POST') {
+        $d=body(); $barberId=(int)($d['barber_id']??0); $password=(string)($d['password']??'');
+        if($barberId<=0 || $password==='') out(['error'=>'Barbeiro e senha são obrigatórios'],422);
+        $p=db(); barberOnlyName($p,$barberId);
+        $q=$p->prepare("SELECT b.id,b.name,b.active,ba.password_hash FROM barbers b JOIN barber_accounts ba ON ba.barber_id=b.id WHERE b.id=? AND b.active=TRUE");
+        $q->execute([$barberId]); $a=$q->fetch();
+        if(!$a || !password_verify($password,(string)$a['password_hash'])) out(['error'=>'Senha incorreta'],401);
+        $token=bin2hex(random_bytes(32)); $hash=hash('sha256',$token);
+        $q=$p->prepare("INSERT INTO barber_sessions(token_hash,barber_id,expires_at) VALUES(?,?,NOW()+INTERVAL '30 days')"); $q->execute([$hash,$barberId]);
+        out(['ok'=>true,'token'=>$token,'barber'=>['id'=>(int)$a['id'],'name'=>$a['name']]]);
+    }
+    if($path==='/api/barber/change-password' && $method==='POST') {
+        $p=db(); $auth=barberAuth($p); barberOnlyName($p,$auth['barber_id']); $d=body();
+        $current=(string)($d['current_password']??''); $new=(string)($d['new_password']??''); $confirm=(string)($d['confirm_password']??'');
+        if($current==='' || $new==='' || $confirm==='') out(['error'=>'Preencha todos os campos'],422);
+        if(strlen($new)<4) out(['error'=>'A nova senha deve ter pelo menos 4 caracteres'],422);
+        if($new!==$confirm) out(['error'=>'A confirmação da senha não confere'],422);
+        $q=$p->prepare('SELECT password_hash FROM barber_accounts WHERE barber_id=?'); $q->execute([$auth['barber_id']]); $hash=(string)($q->fetchColumn()?:'');
+        if($hash==='' || !password_verify($current,$hash)) out(['error'=>'Senha atual incorreta'],401);
+        $q=$p->prepare('UPDATE barber_accounts SET password_hash=?,updated_at=NOW() WHERE barber_id=?'); $q->execute([password_hash($new,PASSWORD_DEFAULT),$auth['barber_id']]);
+        out(['ok'=>true,'message'=>'Senha alterada com sucesso']);
+    }
+    if($path==='/api/barber/logout' && $method==='POST') {
+        $p=db(); $token=bearerToken(); if($token!=='') $p->prepare('DELETE FROM barber_sessions WHERE token_hash=?')->execute([hash('sha256',$token)]); out(['ok'=>true]);
+    }
+    if($path==='/api/barber/me' && $method==='GET') { $p=db(); $auth=barberAuth($p); out(['ok'=>true,'barber'=>$auth]); }
+    if($path==='/api/barber/dashboard' && $method==='GET') {
+        $p=db(); $auth=barberAuth($p); $date=trim((string)($_GET['date']??'')); if($date==='' || datev($date)===null) out(['error'=>'Data inválida'],422);
+        $q=$p->prepare("SELECT a.id,a.barber_id,a.service_id,a.customer_id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS date,TO_CHAR(a.appointment_time,'HH24:MI') AS time,a.status,c.name AS customer_name,c.phone AS customer_phone,s.name AS service_name,s.price,b.name AS barber_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN barbers b ON b.id=a.barber_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? ORDER BY a.appointment_time,a.id");
+        $q->execute([$auth['barber_id'],$date]); out(['appointments'=>$q->fetchAll(),'barber'=>$auth]);
+    }
+    if($path==='/api/barber/status' && $method==='POST') {
+        $p=db(); $auth=barberAuth($p); $d=body(); $id=(int)($d['id']??0); $status=(string)($d['status']??'');
+        if($id<=0 || !in_array($status,['confirmed','cancelled','completed'],true)) out(['error'=>'Status inválido'],422);
+        $q=$p->prepare('SELECT status FROM appointments WHERE id=? AND barber_id=?'); $q->execute([$id,$auth['barber_id']]); $old=$q->fetchColumn();
+        if($old===false) out(['error'=>'Agendamento não encontrado para este barbeiro'],404);
+        $q=$p->prepare('UPDATE appointments SET status=? WHERE id=? AND barber_id=? RETURNING id'); $q->execute([$status,$id,$auth['barber_id']]); if(!$q->fetch()) out(['error'=>'Agendamento não encontrado'],404);
+        if((string)$old!==$status) notifyAppointmentCustomer($p,$id,$status);
+        out(['ok'=>true,'id'=>$id,'status'=>$status]);
+    }
+
     if($path==='/api/admin/login' && $method==='POST') { $d=body();$configured=getenv('ADMIN_PASSWORD')?:'studioaa123';if(!hash_equals($configured,(string)($d['password']??'')))out(['error'=>'Senha incorreta'],401);out(['ok'=>true]); }
 
     // Painel: barbers - aceita POST e PUT, sem exigir senha no backend para compatibilidade
