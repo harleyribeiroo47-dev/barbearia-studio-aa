@@ -220,7 +220,34 @@ if(!sendVerificationEmail($email,$name,$code)){
 }
 out(['ok'=>true,'message'=>'Código enviado para seu e-mail'],201);
 }
-if($path==='/api/client/verify-email'&&$method==='POST'){$d=body();$email=strtolower(trim((string)($d['email']??'')));$code=trim((string)($d['code']??''));$p=db();$q=$p->prepare('SELECT id,verification_code_hash,verification_expires_at FROM client_accounts WHERE LOWER(email)=LOWER(?)');$q->execute([$email]);$a=$q->fetch();if(!$a||!password_verify($code,(string)$a['verification_code_hash'])||strtotime((string)$a['verification_expires_at'])<time())out(['error'=>'Código inválido ou expirado'],401);$p->prepare('UPDATE client_accounts SET email_verified=TRUE,verification_code_hash=NULL,verification_expires_at=NULL,updated_at=NOW() WHERE id=?')->execute([(int)$a['id']]);out(['ok'=>true]);}
+if($path==='/api/client/verify-email'&&$method==='POST'){
+  $d=body();
+  // V28: aceita os nomes usados por versões diferentes do app e preserva o mesmo código enviado.
+  $email=strtolower(trim((string)($d['email']??$d['e-mail']??'')));
+  $code=trim((string)($d['code']??$d['verification_code']??$d['verificationCode']??$d['codigo']??''));
+  $p=db();
+  if($email===''||$code==='')out(['error'=>'E-mail e código são obrigatórios','code'=>'VERIFICATION_DATA_MISSING'],422);
+  $q=$p->prepare('SELECT ca.id,ca.customer_id,ca.verification_code_hash,ca.verification_expires_at,ca.email_verified,c.name,c.phone,c.email,c.photo_data FROM client_accounts ca JOIN customers c ON c.id=ca.customer_id WHERE LOWER(ca.email)=LOWER(?)');
+  $q->execute([$email]);
+  $a=$q->fetch();
+  if(!$a)out(['error'=>'Conta não encontrada','code'=>'ACCOUNT_NOT_FOUND'],404);
+  if((bool)$a['email_verified'])out(['ok'=>true,'verified'=>true,'message'=>'E-mail já confirmado']);
+  $expires=$a['verification_expires_at']?strtotime((string)$a['verification_expires_at']):0;
+  if((string)$a['verification_code_hash']===''||!password_verify($code,(string)$a['verification_code_hash'])||$expires<time())out(['error'=>'Código inválido ou expirado','code'=>'INVALID_VERIFICATION_CODE'],401);
+  $p->beginTransaction();
+  try{
+    $p->prepare('UPDATE client_accounts SET email_verified=TRUE,verification_code_hash=NULL,verification_expires_at=NULL,updated_at=NOW() WHERE id=?')->execute([(int)$a['id']]);
+    // Já autenticamos o cliente aqui: o app não precisa chamar cadastro novamente nem pedir outro código.
+    $t=bin2hex(random_bytes(32));
+    $p->prepare("INSERT INTO client_sessions(token_hash,customer_id,expires_at) VALUES(?,?,NOW()+INTERVAL '30 days')")->execute([hash('sha256',$t),(int)$a['customer_id']]);
+    $p->commit();
+    out(['ok'=>true,'verified'=>true,'authenticated'=>true,'token'=>$t,'client'=>['id'=>(int)$a['customer_id'],'name'=>$a['name'],'phone'=>$a['phone'],'email'=>$a['email'],'photo_data'=>$a['photo_data']]]);
+  }catch(Throwable $e){
+    if($p->inTransaction())$p->rollBack();
+    error_log('Studio A.A V28 verify-email: '.$e->getMessage());
+    out(['error'=>'Não foi possível concluir a confirmação'],500);
+  }
+}
 if($path==='/api/client/resend-verification'&&$method==='POST'){$d=body();$email=strtolower(trim((string)($d['email']??'')));$p=db();$q=$p->prepare('SELECT id,customer_id,email_verified FROM client_accounts WHERE LOWER(email)=LOWER(?)');$q->execute([$email]);$a=$q->fetch();if(!$a)out(['error'=>'Conta não encontrada'],404);if((bool)$a['email_verified'])out(['ok'=>true,'message'=>'E-mail já confirmado']);$q=$p->prepare('SELECT name FROM customers WHERE id=?');$q->execute([(int)$a['customer_id']]);$name=(string)$q->fetchColumn();$code=(string)random_int(100000,999999);$p->prepare("UPDATE client_accounts SET verification_code_hash=?,verification_expires_at=NOW()+INTERVAL '15 minutes',updated_at=NOW() WHERE id=?")->execute([password_hash($code,PASSWORD_DEFAULT),(int)$a['id']]);if(!sendVerificationEmail($email,$name,$code))out(['error'=>'Não foi possível enviar o e-mail'],503);out(['ok'=>true]);}
 if($path==='/api/client/login'&&$method==='POST'){$d=body();$email=strtolower(trim((string)($d['email']??'')));$pw=(string)($d['password']??'');$p=db();$q=$p->prepare('SELECT ca.customer_id,ca.password_hash,ca.email_verified,c.name,c.phone,c.email,c.photo_data FROM client_accounts ca JOIN customers c ON c.id=ca.customer_id WHERE LOWER(ca.email)=LOWER(?)');$q->execute([$email]);$a=$q->fetch();if(!$a||!password_verify($pw,(string)$a['password_hash']))out(['error'=>'E-mail ou senha incorretos'],401);if(!(bool)$a['email_verified'])out(['error'=>'Confirme seu e-mail antes de entrar','code'=>'EMAIL_NOT_VERIFIED'],403);$t=bin2hex(random_bytes(32));$p->prepare("INSERT INTO client_sessions(token_hash,customer_id,expires_at) VALUES(?,?,NOW()+INTERVAL '30 days')")->execute([hash('sha256',$t),(int)$a['customer_id']]);out(['ok'=>true,'token'=>$t,'client'=>['id'=>(int)$a['customer_id'],'name'=>$a['name'],'phone'=>$a['phone'],'email'=>$a['email'],'photo_data'=>$a['photo_data']]]);}
 if($path==='/api/client/logout'&&$method==='POST'){$p=db();$t=bearerToken();if($t!=='')$p->prepare('DELETE FROM client_sessions WHERE token_hash=?')->execute([hash('sha256',$t)]);out(['ok'=>true]);}
