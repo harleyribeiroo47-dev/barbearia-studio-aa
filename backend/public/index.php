@@ -99,7 +99,9 @@ function barberAuth(PDO $p): array {
     $q=$p->prepare("SELECT s.barber_id,b.name FROM barber_sessions s JOIN barbers b ON b.id=s.barber_id WHERE s.token_hash=? AND s.expires_at>NOW() AND b.active=TRUE");
     $q->execute([$hash]); $row=$q->fetch();
     if(!$row) out(['error'=>'Sessão expirada ou inválida'],401);
-    return ['barber_id'=>(int)$row['barber_id'],'name'=>(string)$row['name']];
+    $name=strtoupper(trim((string)$row['name']));
+    if(!in_array($name,['ALBERI','ALEX'],true)) out(['error'=>'Acesso não autorizado'],403);
+    return ['barber_id'=>(int)$row['barber_id'],'name'=>$name];
 }
 function barberOnlyName(PDO $p,int $barberId): void {
     $q=$p->prepare("SELECT UPPER(name) FROM barbers WHERE id=?"); $q->execute([$barberId]);
@@ -209,7 +211,17 @@ try {
         if($new!==$confirm) out(['error'=>'A confirmação da senha não confere'],422);
         $q=$p->prepare('SELECT password_hash FROM barber_accounts WHERE barber_id=?'); $q->execute([$auth['barber_id']]); $hash=(string)($q->fetchColumn()?:'');
         if($hash==='' || !password_verify($current,$hash)) out(['error'=>'Senha atual incorreta'],401);
+        if(password_verify($new,$hash)) out(['error'=>'A nova senha deve ser diferente da senha atual'],422);
         $q=$p->prepare('UPDATE barber_accounts SET password_hash=?,updated_at=NOW() WHERE barber_id=?'); $q->execute([password_hash($new,PASSWORD_DEFAULT),$auth['barber_id']]);
+        // Revoga outras sessões do mesmo barbeiro; mantém a sessão atual para evitar logout inesperado no aparelho que fez a troca.
+        $current=bearerToken();
+        if($current!=='') {
+            $currentHash=hash('sha256',$current);
+            $q=$p->prepare('DELETE FROM barber_sessions WHERE barber_id=? AND token_hash<>?');
+            $q->execute([$auth['barber_id'],$currentHash]);
+        } else {
+            $p->prepare('DELETE FROM barber_sessions WHERE barber_id=?')->execute([$auth['barber_id']]);
+        }
         out(['ok'=>true,'message'=>'Senha alterada com sucesso']);
     }
     if($path==='/api/barber/logout' && $method==='POST') {
