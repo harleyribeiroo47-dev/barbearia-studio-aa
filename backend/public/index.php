@@ -95,7 +95,7 @@ function sendVerificationEmail(string $email,string $name,string $code):bool{
 function scheduleRows(PDO $p,int $bid):array{$q=$p->prepare('SELECT day_of_week,active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week');$q->execute([$bid]);return $q->fetchAll();}
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/';$method=$_SERVER['REQUEST_METHOD'];
 try{
-if($path==='/api/health'&&$method==='GET')out(['ok'=>true,'service'=>'Studio A.A API','version'=>'client-email-ratings-photos-gallery-v21','database_configured'=>envv('DATABASE_URL')!=='' || envv('DATABASE_INTERNAL_URL')!=='' || envv('DATABASE_PRIVATE_URL')!=='' || envv('POSTGRES_URL')!=='' || envv('POSTGRESQL_URL')!=='']);
+if($path==='/api/health'&&$method==='GET')out(['ok'=>true,'service'=>'Studio A.A API','version'=>'client-email-ratings-photos-gallery-v24','database_configured'=>envv('DATABASE_URL')!=='' || envv('DATABASE_INTERNAL_URL')!=='' || envv('DATABASE_PRIVATE_URL')!=='' || envv('POSTGRES_URL')!=='' || envv('POSTGRESQL_URL')!=='']);
 if($path==='/api/services'&&$method==='GET')out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
 if($path==='/api/barbers'&&$method==='GET')out(db()->query("SELECT id,name,specialty,rating,photo_data FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 if($path==='/api/gallery'&&$method==='GET')out(db()->query("SELECT id,name,category,description,photo_data FROM gallery_cuts WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
@@ -103,7 +103,65 @@ if($path==='/api/appointments'&&$method==='POST'){
 $d=body();$service=(int)($d['service_id']??$d['serviceId']??0);$barber=(int)($d['barber_id']??$d['barberId']??0);$name=trim((string)($d['customer_name']??$d['name']??''));$phone=trim((string)($d['customer_phone']??$d['phone']??''));$date=datev($d['date']??$d['appointment_date']??'');$time=timev($d['time']??$d['appointment_time']??'');if($service<=0||$barber<=0||$date===null||$time===null)out(['error'=>'Dados do agendamento inválidos'],422);$p=db();$client=null;if(bearerToken()!==''){try{$client=clientAuth($p);}catch(Throwable $e){}}if($client){$name=$client['name'];$phone=$client['phone'];}if($name===''||$phone==='')out(['error'=>'Nome e telefone são obrigatórios'],422);$p->beginTransaction();try{$lock=(int)sprintf('%u',crc32("$barber|$date|$time"));$p->query("SELECT pg_advisory_xact_lock($lock)");$q=$p->prepare("SELECT COUNT(*) FROM appointments WHERE barber_id=? AND appointment_date=? AND appointment_time=? AND status IN ('pending','confirmed')");$q->execute([$barber,$date,$time]);if((int)$q->fetchColumn()>0){$p->rollBack();out(['error'=>'Horário já ocupado'],409);}$q=$p->prepare('SELECT id FROM customers WHERE phone=?');$q->execute([$phone]);$c=$q->fetch();if($c){$cid=(int)$c['id'];$p->prepare('UPDATE customers SET name=? WHERE id=?')->execute([$name,$cid]);}else{$q=$p->prepare('INSERT INTO customers(name,phone) VALUES(?,?) RETURNING id');$q->execute([$name,$phone]);$cid=(int)$q->fetchColumn();}$q=$p->prepare("INSERT INTO appointments(customer_id,service_id,barber_id,appointment_date,appointment_time,status) VALUES(?,?,?,?,?,'pending') RETURNING id");$q->execute([$cid,$service,$barber,$date,$time]);$id=(int)$q->fetchColumn();$p->commit();notifyAppointmentBarber($p,$id);out(['ok'=>true,'id'=>$id,'status'=>'pending'],201);}catch(Throwable $e){if($p->inTransaction())$p->rollBack();out(['error'=>'Não foi possível criar o agendamento'],500);}}
 if($path==='/api/push/register'&&$method==='POST'){$d=body();$phone=trim((string)($d['phone']??''));$t=trim((string)($d['expo_push_token']??$d['expoPushToken']??''));if($phone===''||$t==='')out(['error'=>'phone e expo_push_token são obrigatórios'],422);$p=db();$q=$p->prepare("INSERT INTO push_tokens(phone,expo_push_token,updated_at) VALUES(?,?,NOW()) ON CONFLICT(phone) DO UPDATE SET expo_push_token=EXCLUDED.expo_push_token,updated_at=NOW()");$q->execute([$phone,$t]);out(['ok'=>true]);}
 if($path==='/api/barber/push/register'&&$method==='POST'){$p=db();$a=barberAuth($p);$d=body();$bid=(int)($d['barber_id']??0);$t=trim((string)($d['expo_push_token']??$d['expoPushToken']??''));if($bid!==$a['barber_id'])out(['error'=>'Token não autorizado para este barbeiro'],403);if($t==='')out(['error'=>'Token Expo inválido'],422);$q=$p->prepare("INSERT INTO barber_push_tokens(barber_id,expo_push_token,updated_at) VALUES(?,?,NOW()) ON CONFLICT(barber_id) DO UPDATE SET expo_push_token=EXCLUDED.expo_push_token,updated_at=NOW()");$q->execute([$bid,$t]);out(['ok'=>true]);}
-if($path==='/api/client/register'&&$method==='POST'){$d=body();$name=trim((string)($d['name']??''));$phone=trim((string)($d['phone']??''));$email=strtolower(trim((string)($d['email']??'')));$pw=(string)($d['password']??'');if($name===''||$phone===''||$email===''||$pw==='')out(['error'=>'Nome, telefone, e-mail e senha são obrigatórios'],422);if(!filter_var($email,FILTER_VALIDATE_EMAIL))out(['error'=>'E-mail inválido'],422);if(strlen($pw)<6)out(['error'=>'A senha deve ter pelo menos 6 caracteres'],422);$p=db();$q=$p->prepare('SELECT id FROM client_accounts WHERE LOWER(email)=LOWER(?)');$q->execute([$email]);if($q->fetch())out(['error'=>'Este e-mail já está cadastrado'],409);$q=$p->prepare('SELECT id FROM customers WHERE phone=?');$q->execute([$phone]);$c=$q->fetch();if($c){$cid=(int)$c['id'];$q=$p->prepare('SELECT id FROM client_accounts WHERE customer_id=?');$q->execute([$cid]);if($q->fetch())out(['error'=>'Este telefone já possui uma conta'],409);$p->prepare('UPDATE customers SET name=?,email=? WHERE id=?')->execute([$name,$email,$cid]);}else{$q=$p->prepare('INSERT INTO customers(name,phone,email) VALUES(?,?,?) RETURNING id');$q->execute([$name,$phone,$email]);$cid=(int)$q->fetchColumn();}$code=(string)random_int(100000,999999);$q=$p->prepare("INSERT INTO client_accounts(customer_id,email,password_hash,verification_code_hash,verification_expires_at) VALUES(?,?,?,?,NOW()+INTERVAL '15 minutes')");$q->execute([$cid,$email,password_hash($pw,PASSWORD_DEFAULT),password_hash($code,PASSWORD_DEFAULT)]);if(!sendVerificationEmail($email,$name,$code)){ $p->prepare('DELETE FROM client_accounts WHERE customer_id=?')->execute([$cid]);out(['error'=>'Não foi possível enviar o e-mail de confirmação. Configure RESEND_API_KEY e EMAIL_FROM no Render.'],503);}out(['ok'=>true,'message'=>'Código enviado para seu e-mail'],201);}
+if($path==='/api/client/register'&&$method==='POST'){
+$d=body();
+$name=trim((string)($d['name']??''));
+$phone=trim((string)($d['phone']??''));
+$email=strtolower(trim((string)($d['email']??'')));
+$pw=(string)($d['password']??'');
+if($name===''||$phone===''||$email===''||$pw==='')out(['error'=>'Nome, telefone, e-mail e senha são obrigatórios'],422);
+if(!filter_var($email,FILTER_VALIDATE_EMAIL))out(['error'=>'E-mail inválido'],422);
+if(strlen($pw)<6)out(['error'=>'A senha deve ter pelo menos 6 caracteres'],422);
+$p=db();
+
+/* V24: se o e-mail já existe, só bloqueia quando a conta já foi confirmada.
+   Se ainda não foi confirmada, gera um novo código e reenvia a confirmação. */
+$q=$p->prepare('SELECT id,customer_id,email_verified FROM client_accounts WHERE LOWER(email)=LOWER(?)');
+$q->execute([$email]);
+$existing=$q->fetch();
+if($existing){
+  if((bool)$existing['email_verified'])out(['error'=>'Este e-mail já está cadastrado'],409);
+
+  $cid=(int)$existing['customer_id'];
+  $q=$p->prepare('SELECT name,phone FROM customers WHERE id=?');
+  $q->execute([$cid]);
+  $customer=$q->fetch();
+  $emailName=$customer?(string)$customer['name']:$name;
+
+  /* Atualiza a senha digitada no novo cadastro e substitui o código anterior. */
+  $code=(string)random_int(100000,999999);
+  $q=$p->prepare("UPDATE client_accounts SET password_hash=?,verification_code_hash=?,verification_expires_at=NOW()+INTERVAL '15 minutes',updated_at=NOW() WHERE id=?");
+  $q->execute([password_hash($pw,PASSWORD_DEFAULT),password_hash($code,PASSWORD_DEFAULT),(int)$existing['id']]);
+
+  if(!sendVerificationEmail($email,$emailName,$code)){
+    out(['error'=>'Não foi possível enviar o e-mail de confirmação. Configure RESEND_API_KEY e EMAIL_FROM no Render.'],503);
+  }
+  out(['ok'=>true,'message'=>'Sua conta já existe, mas ainda não foi confirmada. Um novo código foi enviado para seu e-mail.','code'=>'EMAIL_CONFIRMATION_RESENT'],200);
+}
+
+$q=$p->prepare('SELECT id FROM customers WHERE phone=?');
+$q->execute([$phone]);
+$c=$q->fetch();
+if($c){
+  $cid=(int)$c['id'];
+  $q=$p->prepare('SELECT id FROM client_accounts WHERE customer_id=?');
+  $q->execute([$cid]);
+  if($q->fetch())out(['error'=>'Este telefone já possui uma conta'],409);
+  $p->prepare('UPDATE customers SET name=?,email=? WHERE id=?')->execute([$name,$email,$cid]);
+}else{
+  $q=$p->prepare('INSERT INTO customers(name,phone,email) VALUES(?,?,?) RETURNING id');
+  $q->execute([$name,$phone,$email]);
+  $cid=(int)$q->fetchColumn();
+}
+$code=(string)random_int(100000,999999);
+$q=$p->prepare("INSERT INTO client_accounts(customer_id,email,password_hash,verification_code_hash,verification_expires_at) VALUES(?,?,?,?,NOW()+INTERVAL '15 minutes')");
+$q->execute([$cid,$email,password_hash($pw,PASSWORD_DEFAULT),password_hash($code,PASSWORD_DEFAULT)]);
+if(!sendVerificationEmail($email,$name,$code)){
+  $p->prepare('DELETE FROM client_accounts WHERE customer_id=?')->execute([$cid]);
+  out(['error'=>'Não foi possível enviar o e-mail de confirmação. Configure RESEND_API_KEY e EMAIL_FROM no Render.'],503);
+}
+out(['ok'=>true,'message'=>'Código enviado para seu e-mail'],201);
+}
 if($path==='/api/client/verify-email'&&$method==='POST'){$d=body();$email=strtolower(trim((string)($d['email']??'')));$code=trim((string)($d['code']??''));$p=db();$q=$p->prepare('SELECT id,verification_code_hash,verification_expires_at FROM client_accounts WHERE LOWER(email)=LOWER(?)');$q->execute([$email]);$a=$q->fetch();if(!$a||!password_verify($code,(string)$a['verification_code_hash'])||strtotime((string)$a['verification_expires_at'])<time())out(['error'=>'Código inválido ou expirado'],401);$p->prepare('UPDATE client_accounts SET email_verified=TRUE,verification_code_hash=NULL,verification_expires_at=NULL,updated_at=NOW() WHERE id=?')->execute([(int)$a['id']]);out(['ok'=>true]);}
 if($path==='/api/client/resend-verification'&&$method==='POST'){$d=body();$email=strtolower(trim((string)($d['email']??'')));$p=db();$q=$p->prepare('SELECT id,customer_id,email_verified FROM client_accounts WHERE LOWER(email)=LOWER(?)');$q->execute([$email]);$a=$q->fetch();if(!$a)out(['error'=>'Conta não encontrada'],404);if((bool)$a['email_verified'])out(['ok'=>true,'message'=>'E-mail já confirmado']);$q=$p->prepare('SELECT name FROM customers WHERE id=?');$q->execute([(int)$a['customer_id']]);$name=(string)$q->fetchColumn();$code=(string)random_int(100000,999999);$p->prepare("UPDATE client_accounts SET verification_code_hash=?,verification_expires_at=NOW()+INTERVAL '15 minutes',updated_at=NOW() WHERE id=?")->execute([password_hash($code,PASSWORD_DEFAULT),(int)$a['id']]);if(!sendVerificationEmail($email,$name,$code))out(['error'=>'Não foi possível enviar o e-mail'],503);out(['ok'=>true]);}
 if($path==='/api/client/login'&&$method==='POST'){$d=body();$email=strtolower(trim((string)($d['email']??'')));$pw=(string)($d['password']??'');$p=db();$q=$p->prepare('SELECT ca.customer_id,ca.password_hash,ca.email_verified,c.name,c.phone,c.email,c.photo_data FROM client_accounts ca JOIN customers c ON c.id=ca.customer_id WHERE LOWER(ca.email)=LOWER(?)');$q->execute([$email]);$a=$q->fetch();if(!$a||!password_verify($pw,(string)$a['password_hash']))out(['error'=>'E-mail ou senha incorretos'],401);if(!(bool)$a['email_verified'])out(['error'=>'Confirme seu e-mail antes de entrar','code'=>'EMAIL_NOT_VERIFIED'],403);$t=bin2hex(random_bytes(32));$p->prepare("INSERT INTO client_sessions(token_hash,customer_id,expires_at) VALUES(?,?,NOW()+INTERVAL '30 days')")->execute([hash('sha256',$t),(int)$a['customer_id']]);out(['ok'=>true,'token'=>$t,'client'=>['id'=>(int)$a['customer_id'],'name'=>$a['name'],'phone'=>$a['phone'],'email'=>$a['email'],'photo_data'=>$a['photo_data']]]);}
