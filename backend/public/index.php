@@ -22,13 +22,24 @@ function db():PDO{
     foreach(['DATABASE_INTERNAL_URL','DATABASE_PRIVATE_URL','POSTGRES_URL','POSTGRESQL_URL'] as $alias){$url=envv($alias);if($url!=='')break;}
   }
   if($url==='')out(['error'=>'DATABASE_URL não configurada'],500);
+  // Render normalmente fornece postgresql://...; fazemos o parsing manualmente
+  // para tolerar senhas com caracteres especiais que podem quebrar parse_url().
   $u=parse_url($url);
-  if(!$u || empty($u['host']))out(['error'=>'DATABASE_URL inválida'],500);
-  $host=$u['host'];
-  $port=(int)($u['port']??5432);
-  $db=ltrim((string)($u['path']??''),'/');
-  $user=rawurldecode((string)($u['user']??''));
-  $pass=rawurldecode((string)($u['pass']??''));
+  $host=''; $port=5432; $db=''; $user=''; $pass='';
+  if($u && !empty($u['host'])){
+    $host=(string)$u['host']; $port=(int)($u['port']??5432);
+    $db=ltrim((string)($u['path']??''),'/');
+    $user=rawurldecode((string)($u['user']??'')); $pass=rawurldecode((string)($u['pass']??''));
+  } else if(preg_match('/^postgres(?:ql)?:\/\/(.+)@([^\/]+)\/(.+)$/i',$url,$m)){
+    $auth=$m[1]; $server=$m[2]; $db=explode('?', $m[3], 2)[0];
+    $at=strrpos($auth,'@'); if($at!==false){ $auth=substr($auth,0,$at); }
+    $colon=strpos($auth,':');
+    if($colon===false){ $user=rawurldecode($auth); }
+    else { $user=rawurldecode(substr($auth,0,$colon)); $pass=rawurldecode(substr($auth,$colon+1)); }
+    if(strpos($server,':')!==false){ [$host,$ps]=strrpos($server,':')!==false? [substr($server,0,strrpos($server,':')),substr($server,strrpos($server,':')+1)] : [$server,'']; if(ctype_digit($ps))$port=(int)$ps; }
+    else $host=$server;
+  }
+  if($host==='')out(['error'=>'DATABASE_URL inválida'],500);
   if($db==='')out(['error'=>'DATABASE_URL sem nome do banco'],500);
   $dsn='pgsql:host='.$host.';port='.$port.';dbname='.$db;
   $p=new PDO($dsn,$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
