@@ -40,6 +40,11 @@ function initDb(PDO $p): void {
     $q=$p->prepare("INSERT INTO services(name,duration,price,sort_order) SELECT ?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM services WHERE name=? )"); foreach($services as $x)$q->execute([$x[0],$x[1],$x[2],$x[3],$x[0]]);
     $barbers=[['Lucas','Especialista em degradê',4.9],['Rafael','Barba e bigode',4.8],['Thiago','Corte masculino',4.7],['Matheus','Estilo clássico',4.9]];
     $q=$p->prepare("INSERT INTO barbers(name,specialty,rating) SELECT ?,?,? WHERE NOT EXISTS(SELECT 1 FROM barbers WHERE name=? )"); foreach($barbers as $x)$q->execute([$x[0],$x[1],$x[2],$x[0]]);
+    // Cria contas individuais para ALBERI e ALEX, sem sobrescrever senhas já alteradas.
+    $defaultHash=password_hash('1234', PASSWORD_DEFAULT);
+    $q=$p->prepare("SELECT id FROM barbers WHERE UPPER(name)=? LIMIT 1");
+    $ins=$p->prepare("INSERT INTO barber_accounts(barber_id,password_hash) SELECT ?,? WHERE NOT EXISTS(SELECT 1 FROM barber_accounts WHERE barber_id=?)");
+    foreach(['ALBERI','ALEX'] as $nm){ $q->execute([$nm]); $bid=$q->fetchColumn(); if($bid!==false) $ins->execute([(int)$bid,$defaultHash,(int)$bid]); }
 }
 function boolv($v): bool { if(is_bool($v)) return $v; $s=strtolower(trim((string)$v)); return in_array($s,['1','true','on','yes','sim','aberto','active'],true); }
 function timev($v): ?string { $s=trim((string)$v); if($s==='') return null; if(preg_match('/^\d{1,2}:\d{2}$/',$s)){ [$h,$m]=array_map('intval',explode(':',$s)); if($h>=0&&$h<=23&&$m>=0&&$m<=59) return sprintf('%02d:%02d',$h,$m); } if(preg_match('/^\d{1,2}:\d{2}:\d{2}$/',$s)){ [$h,$m,$sec]=array_map('intval',explode(':',$s)); if($h>=0&&$h<=23&&$m>=0&&$m<=59&&$sec>=0&&$sec<=59) return sprintf('%02d:%02d:%02d',$h,$m,$sec); } return null; }
