@@ -84,8 +84,12 @@ function getSchedule(PDO $p,int $barber): array {
     return $q->fetchAll();
 }
 function bearerToken(): string {
-    $h=(string)($_SERVER['HTTP_AUTHORIZATION']??'');
-    if(preg_match('/^Bearer\s+(.+)$/i',$h,$m)) return trim($m[1]);
+    $headers=[];
+    foreach(['HTTP_AUTHORIZATION','REDIRECT_HTTP_AUTHORIZATION','HTTP_X_BARBER_TOKEN','HTTP_X_ACCESS_TOKEN'] as $k){ if(!empty($_SERVER[$k])) $headers[]=(string)$_SERVER[$k]; }
+    foreach($headers as $h){
+        if(preg_match('/^Bearer\s+(.+)$/i',trim($h),$m)) return trim($m[1]);
+        if(preg_match('/^[A-Fa-f0-9]{40,}$/',trim($h))) return trim($h);
+    }
     return '';
 }
 function barberAuth(PDO $p): array {
@@ -104,7 +108,7 @@ function barberOnlyName(PDO $p,int $barberId): void {
 }
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/'; $method=$_SERVER['REQUEST_METHOD'];
 try {
-    if($path==='/api/health' && $method==='GET') out(['ok'=>true,'service'=>'Studio A.A API','version'=>'push-notifications-v14-barber']);
+    if($path==='/api/health' && $method==='GET') out(['ok'=>true,'service'=>'Studio A.A API','version'=>'push-notifications-v17-barber-auth']);
     if($path==='/api/services' && $method==='GET') out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
     if($path==='/api/barbers' && $method==='GET') out(db()->query("SELECT id,name,specialty,rating FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 
