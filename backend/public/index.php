@@ -75,27 +75,75 @@ function barberAuth(PDO $p):array{$t=bearerToken();if($t==='')out(['error'=>'Nã
 function sendExpoPush(string $token,string $title,string $message,array $data=[]):void{if(!preg_match('/^ExponentPushToken\[.+\]$/',$token))return;$payload=json_encode(['to'=>$token,'title'=>$title,'body'=>$message,'sound'=>'default','data'=>$data],JSON_UNESCAPED_UNICODE);$ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Content-Type: application/json\r\nAccept: application/json\r\n",'content'=>$payload,'timeout'=>8,'ignore_errors'=>true]]);@file_get_contents('https://exp.host/--/api/v2/push/send',false,$ctx);}
 function notifyAppointmentCustomer(PDO $p,int $id,string $status):void{try{$q=$p->prepare("SELECT a.id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') date,TO_CHAR(a.appointment_time,'HH24:MI') time,c.phone,s.name service_name,b.name barber_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id JOIN barbers b ON b.id=a.barber_id WHERE a.id=?");$q->execute([$id]);$a=$q->fetch();if(!$a)return;$q=$p->prepare('SELECT expo_push_token FROM push_tokens WHERE phone=?');$q->execute([$a['phone']]);$t=(string)($q->fetchColumn()?:'');$labels=['pending'=>'Pendente','confirmed'=>'Confirmado','cancelled'=>'Cancelado','completed'=>'Concluído'];sendExpoPush($t,'Agendamento '.($labels[$status]??$status),"{$a['service_name']} com {$a['barber_name']} — {$a['date']} às {$a['time']}",['appointment_id'=>(int)$id,'status'=>$status]);}catch(Throwable $e){error_log($e->getMessage());}}
 function notifyAppointmentBarber(PDO $p,int $id):void{try{$q=$p->prepare("SELECT a.id,a.barber_id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') date,TO_CHAR(a.appointment_time,'HH24:MI') time,c.name customer_name,s.name service_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.id=?");$q->execute([$id]);$a=$q->fetch();if(!$a)return;$q=$p->prepare('SELECT expo_push_token FROM barber_push_tokens WHERE barber_id=?');$q->execute([(int)$a['barber_id']]);$t=(string)($q->fetchColumn()?:'');sendExpoPush($t,'🔔 Novo agendamento',"{$a['customer_name']} — {$a['service_name']} em {$a['date']} às {$a['time']}",['appointment_id'=>(int)$id,'status'=>'pending']);}catch(Throwable $e){error_log($e->getMessage());}}
+function smtpRead($fp):array{
+  $lines=[]; $code=0;
+  while(($line=fgets($fp,8192))!==false){
+    $line=rtrim($line,"\r\n"); $lines[]=$line;
+    if(preg_match('/^(\d{3})([ -])/', $line,$m)){
+      $code=(int)$m[1];
+      if($m[2]===' ') break;
+    }
+  }
+  return [$code,implode(" | ",$lines)];
+}
+function smtpCommand($fp,string $cmd,int $expect=250):array{
+  fwrite($fp,$cmd."\r\n");
+  [$code,$msg]=smtpRead($fp);
+  return [$code,$msg,$code===$expect];
+}
+function smtpEscapeData(string $data):string{
+  $data=str_replace(["\r\n","\r"],"\n",$data);
+  $lines=explode("\n",$data);
+  foreach($lines as &$line){ if(isset($line[0]) && $line[0]==='.') $line='.'. $line; }
+  return implode("\r\n",$lines);
+}
 function sendVerificationEmail(string $email,string $name,string $code):bool{
-  $key=trim((string)(getenv('RESEND_API_KEY')?:''));
-  $from=trim((string)(getenv('EMAIL_FROM')?:''));
-  if($key===''||$from===''){ error_log('Studio A.A: RESEND_API_KEY ou EMAIL_FROM não configurado'); return false; }
-  $html="<div style='font-family:Arial;max-width:560px;margin:auto'><h2 style='color:#D9A928'>BARBEARIA STUDIO A.A</h2><p>Olá, ".htmlspecialchars($name,ENT_QUOTES,'UTF-8')."!</p><p>Seu código de confirmação é:</p><div style='font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#111;color:#D9A928;text-align:center;border-radius:10px'>$code</div><p>O código expira em 15 minutos.</p></div>";
-  $payload=json_encode(['from'=>$from,'to'=>[$email],'subject'=>'Confirme seu e-mail — Barbearia Studio A.A','html'=>$html],JSON_UNESCAPED_UNICODE);
-  $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Authorization: Bearer $key\r\nContent-Type: application/json\r\nAccept: application/json\r\n",'content'=>$payload,'timeout'=>20,'ignore_errors'=>true]]);
-  $response=@file_get_contents('https://api.resend.com/emails',false,$ctx);
-  $status=0;
-  foreach(($http_response_header??[]) as $h){ if(preg_match('/^HTTP\/\S+\s+(\d{3})/', $h,$m)){ $status=(int)$m[1]; break; } }
-  if($response===false || $status<200 || $status>=300){
-    error_log('Studio A.A Resend falhou: HTTP '.$status.' | '.substr((string)$response,0,1000));
+  // Gmail SMTP: smtp.gmail.com:465 (SSL). Use a Google App Password, never the normal password.
+  $host=trim(envv('SMTP_HOST')?:'smtp.gmail.com');
+  $port=(int)(envv('SMTP_PORT')?:465);
+  $user=trim(envv('SMTP_USER'));
+  $pass=trim(envv('SMTP_PASS'));
+  $from=trim(envv('EMAIL_FROM')?:$user);
+  if($user===''||$pass===''||$from===''){
+    error_log('Studio A.A SMTP: SMTP_USER, SMTP_PASS e EMAIL_FROM precisam estar configurados');
     return false;
   }
-  error_log('Studio A.A Resend aceitou o e-mail | HTTP '.$status.' | '.substr($response,0,500));
-  return true;
+  $html="<div style='font-family:Arial;max-width:560px;margin:auto'><h2 style='color:#D9A928'>BARBEARIA STUDIO A.A</h2><p>Olá, ".htmlspecialchars($name,ENT_QUOTES,'UTF-8')."!</p><p>Seu código de confirmação é:</p><div style='font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#111;color:#D9A928;text-align:center;border-radius:10px'>$code</div><p>O código expira em 15 minutos.</p></div>";
+  $subject='Confirme seu e-mail — Barbearia Studio A.A';
+  $headers="From: Barbearia Studio A.A <".$from.">\r\n";
+  $headers.="To: ".$email."\r\n";
+  $headers.="Subject: ".mb_encode_mimeheader($subject,'UTF-8')."\r\n";
+  $headers.="MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
+  $data=$headers."\r\n".$html;
+  $errno=0;$errstr='';
+  $fp=@stream_socket_client("ssl://{$host}:{$port}",$errno,$errstr,20,STREAM_CLIENT_CONNECT);
+  if(!$fp){error_log("Studio A.A SMTP: conexão falhou {$errno} {$errstr}");return false;}
+  stream_set_timeout($fp,20);
+  try{
+    [$code0,$msg0]=smtpRead($fp);
+    if($code0!==220) throw new RuntimeException("banner HTTP {$code0}: {$msg0}");
+    [$c,$m,$ok]=smtpCommand($fp,'EHLO studio-aa-api',250); if(!$ok) throw new RuntimeException("EHLO {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'AUTH LOGIN',334); if(!$ok) throw new RuntimeException("AUTH LOGIN {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,base64_encode($user),334); if(!$ok) throw new RuntimeException("SMTP usuário {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,base64_encode($pass),235); if(!$ok) throw new RuntimeException("SMTP senha/app password {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'MAIL FROM:<'.$from.'>',250); if(!$ok) throw new RuntimeException("MAIL FROM {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'RCPT TO:<'.$email.'>',250); if(!$ok) throw new RuntimeException("RCPT TO {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'DATA',354); if(!$ok) throw new RuntimeException("DATA {$c}: {$m}");
+    fwrite($fp,smtpEscapeData($data)."\r\n.\r\n");
+    [$c,$m]=smtpRead($fp); if($c!==250) throw new RuntimeException("DATA final {$c}: {$m}");
+    @fwrite($fp,"QUIT\r\n");
+    error_log('Studio A.A Gmail SMTP: e-mail aceito pelo Gmail para '.$email);
+    return true;
+  }catch(Throwable $e){
+    error_log('Studio A.A Gmail SMTP falhou: '.$e->getMessage());
+    return false;
+  }finally{fclose($fp);}
 }
+
 function scheduleRows(PDO $p,int $bid):array{$q=$p->prepare('SELECT day_of_week,active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week');$q->execute([$bid]);return $q->fetchAll();}
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/';$method=$_SERVER['REQUEST_METHOD'];
 try{
-if($path==='/api/health'&&$method==='GET')out(['ok'=>true,'service'=>'Studio A.A API','version'=>'client-email-ratings-photos-gallery-v24','database_configured'=>envv('DATABASE_URL')!=='' || envv('DATABASE_INTERNAL_URL')!=='' || envv('DATABASE_PRIVATE_URL')!=='' || envv('POSTGRES_URL')!=='' || envv('POSTGRESQL_URL')!=='']);
+if($path==='/api/health'&&$method==='GET')out(['ok'=>true,'service'=>'Studio A.A API','version'=>'client-email-ratings-photos-gallery-v25-gmail','database_configured'=>envv('DATABASE_URL')!=='' || envv('DATABASE_INTERNAL_URL')!=='' || envv('DATABASE_PRIVATE_URL')!=='' || envv('POSTGRES_URL')!=='' || envv('POSTGRESQL_URL')!=='']);
 if($path==='/api/services'&&$method==='GET')out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
 if($path==='/api/barbers'&&$method==='GET')out(db()->query("SELECT id,name,specialty,rating,photo_data FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 if($path==='/api/gallery'&&$method==='GET')out(db()->query("SELECT id,name,category,description,photo_data FROM gallery_cuts WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
@@ -134,7 +182,7 @@ if($existing){
   $q->execute([password_hash($pw,PASSWORD_DEFAULT),password_hash($code,PASSWORD_DEFAULT),(int)$existing['id']]);
 
   if(!sendVerificationEmail($email,$emailName,$code)){
-    out(['error'=>'Não foi possível enviar o e-mail de confirmação. Configure RESEND_API_KEY e EMAIL_FROM no Render.'],503);
+    out(['error'=>'Não foi possível enviar o e-mail de confirmação. Verifique SMTP_USER, SMTP_PASS e EMAIL_FROM no Render.'],503);
   }
   out(['ok'=>true,'message'=>'Sua conta já existe, mas ainda não foi confirmada. Um novo código foi enviado para seu e-mail.','code'=>'EMAIL_CONFIRMATION_RESENT'],200);
 }
@@ -158,7 +206,7 @@ $q=$p->prepare("INSERT INTO client_accounts(customer_id,email,password_hash,veri
 $q->execute([$cid,$email,password_hash($pw,PASSWORD_DEFAULT),password_hash($code,PASSWORD_DEFAULT)]);
 if(!sendVerificationEmail($email,$name,$code)){
   $p->prepare('DELETE FROM client_accounts WHERE customer_id=?')->execute([$cid]);
-  out(['error'=>'Não foi possível enviar o e-mail de confirmação. Configure RESEND_API_KEY e EMAIL_FROM no Render.'],503);
+  out(['error'=>'Não foi possível enviar o e-mail de confirmação. Verifique SMTP_USER, SMTP_PASS e EMAIL_FROM no Render.'],503);
 }
 out(['ok'=>true,'message'=>'Código enviado para seu e-mail'],201);
 }
