@@ -98,9 +98,9 @@ function smtpEscapeData(string $data):string{
   return implode("\r\n",$lines);
 }
 function sendVerificationEmail(string $email,string $name,string $code):bool{
-  // Gmail SMTP: smtp.gmail.com:465 (SSL). Use a Google App Password, never the normal password.
+  // Gmail SMTP: prefer smtp.gmail.com:587 with STARTTLS on hosted servers.
   $host=trim(envv('SMTP_HOST')?:'smtp.gmail.com');
-  $port=(int)(envv('SMTP_PORT')?:465);
+  $port=(int)(envv('SMTP_PORT')?:587);
   $user=trim(envv('SMTP_USER'));
   $pass=trim(envv('SMTP_PASS'));
   $from=trim(envv('EMAIL_FROM')?:$user);
@@ -116,21 +116,36 @@ function sendVerificationEmail(string $email,string $name,string $code):bool{
   $headers.="MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n";
   $data=$headers."\r\n".$html;
   $errno=0;$errstr='';
-  $fp=@stream_socket_client("ssl://{$host}:{$port}",$errno,$errstr,20,STREAM_CLIENT_CONNECT);
+  // Use plain TCP first, then upgrade to TLS with STARTTLS.
+  $fp=@stream_socket_client("tcp://{$host}:{$port}",$errno,$errstr,20,STREAM_CLIENT_CONNECT);
   if(!$fp){error_log("Studio A.A SMTP: conexão falhou {$errno} {$errstr}");return false;}
   stream_set_timeout($fp,20);
   try{
     [$code0,$msg0]=smtpRead($fp);
-    if($code0!==220) throw new RuntimeException("banner HTTP {$code0}: {$msg0}");
-    [$c,$m,$ok]=smtpCommand($fp,'EHLO studio-aa-api',250); if(!$ok) throw new RuntimeException("EHLO {$c}: {$m}");
-    [$c,$m,$ok]=smtpCommand($fp,'AUTH LOGIN',334); if(!$ok) throw new RuntimeException("AUTH LOGIN {$c}: {$m}");
-    [$c,$m,$ok]=smtpCommand($fp,base64_encode($user),334); if(!$ok) throw new RuntimeException("SMTP usuário {$c}: {$m}");
-    [$c,$m,$ok]=smtpCommand($fp,base64_encode($pass),235); if(!$ok) throw new RuntimeException("SMTP senha/app password {$c}: {$m}");
-    [$c,$m,$ok]=smtpCommand($fp,'MAIL FROM:<'.$from.'>',250); if(!$ok) throw new RuntimeException("MAIL FROM {$c}: {$m}");
-    [$c,$m,$ok]=smtpCommand($fp,'RCPT TO:<'.$email.'>',250); if(!$ok) throw new RuntimeException("RCPT TO {$c}: {$m}");
-    [$c,$m,$ok]=smtpCommand($fp,'DATA',354); if(!$ok) throw new RuntimeException("DATA {$c}: {$m}");
+    if($code0!==220) throw new RuntimeException("banner SMTP {$code0}: {$msg0}");
+    [$c,$m,$ok]=smtpCommand($fp,'EHLO studio-aa-api',250);
+    if(!$ok) throw new RuntimeException("EHLO inicial {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'STARTTLS',220);
+    if(!$ok) throw new RuntimeException("STARTTLS {$c}: {$m}");
+    $crypto=stream_socket_enable_crypto($fp,true,STREAM_CRYPTO_METHOD_TLS_CLIENT);
+    if($crypto!==true) throw new RuntimeException("Não foi possível ativar TLS");
+    [$c,$m,$ok]=smtpCommand($fp,'EHLO studio-aa-api',250);
+    if(!$ok) throw new RuntimeException("EHLO TLS {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'AUTH LOGIN',334);
+    if(!$ok) throw new RuntimeException("AUTH LOGIN {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,base64_encode($user),334);
+    if(!$ok) throw new RuntimeException("SMTP usuário {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,base64_encode($pass),235);
+    if(!$ok) throw new RuntimeException("SMTP senha/app password {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'MAIL FROM:<'.$from.'>',250);
+    if(!$ok) throw new RuntimeException("MAIL FROM {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'RCPT TO:<'.$email.'>',250);
+    if(!$ok) throw new RuntimeException("RCPT TO {$c}: {$m}");
+    [$c,$m,$ok]=smtpCommand($fp,'DATA',354);
+    if(!$ok) throw new RuntimeException("DATA {$c}: {$m}");
     fwrite($fp,smtpEscapeData($data)."\r\n.\r\n");
-    [$c,$m]=smtpRead($fp); if($c!==250) throw new RuntimeException("DATA final {$c}: {$m}");
+    [$c,$m]=smtpRead($fp);
+    if($c!==250) throw new RuntimeException("DATA final {$c}: {$m}");
     @fwrite($fp,"QUIT\r\n");
     error_log('Studio A.A Gmail SMTP: e-mail aceito pelo Gmail para '.$email);
     return true;
@@ -139,7 +154,6 @@ function sendVerificationEmail(string $email,string $name,string $code):bool{
     return false;
   }finally{fclose($fp);}
 }
-
 function scheduleRows(PDO $p,int $bid):array{$q=$p->prepare('SELECT day_of_week,active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week');$q->execute([$bid]);return $q->fetchAll();}
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/';$method=$_SERVER['REQUEST_METHOD'];
 try{
