@@ -7,7 +7,33 @@ header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, OPTIONS');
 if ($_SERVER['REQUEST_METHOD']==='OPTIONS'){http_response_code(204);exit;}
 function out($d,int $s=200):void{http_response_code($s);echo json_encode($d,JSON_UNESCAPED_UNICODE);exit;}
 function body():array{$d=json_decode(file_get_contents('php://input')?:'{}',true);return is_array($d)?$d:[];}
-function db():PDO{static $p=null;if($p instanceof PDO)return $p;$url=getenv('DATABASE_URL');if(!$url)out(['error'=>'DATABASE_URL não configurada'],500);$u=parse_url($url);if(!$u||empty($u['host']))out(['error'=>'DATABASE_URL inválida'],500);$p=new PDO('pgsql:host='.$u['host'].';port='.($u['port']??5432).';dbname='.ltrim($u['path']??'','/'),$u['user']??'',$u['pass']??'',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);initDb($p);return $p;}
+function envv(string $key):string{
+  $v=getenv($key);
+  if($v!==false && trim((string)$v)!=='') return trim((string)$v);
+  if(isset($_ENV[$key]) && trim((string)$_ENV[$key])!=='') return trim((string)$_ENV[$key]);
+  if(isset($_SERVER[$key]) && trim((string)$_SERVER[$key])!=='') return trim((string)$_SERVER[$key]);
+  return '';
+}
+function db():PDO{
+  static $p=null;
+  if($p instanceof PDO)return $p;
+  $url=envv('DATABASE_URL');
+  if($url===''){
+    foreach(['DATABASE_INTERNAL_URL','DATABASE_PRIVATE_URL','POSTGRES_URL','POSTGRESQL_URL'] as $alias){$url=envv($alias);if($url!=='')break;}
+  }
+  if($url==='')out(['error'=>'DATABASE_URL não configurada'],500);
+  $u=parse_url($url);
+  if(!$u || empty($u['host']))out(['error'=>'DATABASE_URL inválida'],500);
+  $host=$u['host'];
+  $port=(int)($u['port']??5432);
+  $db=ltrim((string)($u['path']??''),'/');
+  $user=rawurldecode((string)($u['user']??''));
+  $pass=rawurldecode((string)($u['pass']??''));
+  if($db==='')out(['error'=>'DATABASE_URL sem nome do banco'],500);
+  $dsn='pgsql:host='.$host.';port='.$port.';dbname='.$db;
+  $p=new PDO($dsn,$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
+  initDb($p);return $p;
+}
 function initDb(PDO $p):void{
 $p->exec("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname='appointment_status') THEN CREATE TYPE appointment_status AS ENUM ('pending','confirmed','cancelled','completed'); END IF; END $$;");
 $p->exec("CREATE TABLE IF NOT EXISTS customers(id BIGSERIAL PRIMARY KEY,name VARCHAR(160) NOT NULL,phone VARCHAR(40) NOT NULL UNIQUE,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
@@ -42,7 +68,7 @@ function sendVerificationEmail(string $email,string $name,string $code):bool{$ke
 function scheduleRows(PDO $p,int $bid):array{$q=$p->prepare('SELECT day_of_week,active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week');$q->execute([$bid]);return $q->fetchAll();}
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/';$method=$_SERVER['REQUEST_METHOD'];
 try{
-if($path==='/api/health'&&$method==='GET')out(['ok'=>true,'service'=>'Studio A.A API','version'=>'client-email-ratings-photos-gallery-v20']);
+if($path==='/api/health'&&$method==='GET')out(['ok'=>true,'service'=>'Studio A.A API','version'=>'client-email-ratings-photos-gallery-v21','database_configured'=>envv('DATABASE_URL')!=='' || envv('DATABASE_INTERNAL_URL')!=='' || envv('DATABASE_PRIVATE_URL')!=='' || envv('POSTGRES_URL')!=='' || envv('POSTGRESQL_URL')!=='']);
 if($path==='/api/services'&&$method==='GET')out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
 if($path==='/api/barbers'&&$method==='GET')out(db()->query("SELECT id,name,specialty,rating,photo_data FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
 if($path==='/api/gallery'&&$method==='GET')out(db()->query("SELECT id,name,category,description,photo_data FROM gallery_cuts WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
