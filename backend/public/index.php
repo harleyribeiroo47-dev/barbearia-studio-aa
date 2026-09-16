@@ -72,6 +72,14 @@ function datev($v):?string{$s=trim((string)$v);if(preg_match('/^\d{4}-\d{2}-\d{2
 function bearerToken():string{$hs=[];foreach(['HTTP_AUTHORIZATION','REDIRECT_HTTP_AUTHORIZATION','HTTP_X_BARBER_TOKEN','HTTP_X_ACCESS_TOKEN'] as $k)if(!empty($_SERVER[$k]))$hs[]=(string)$_SERVER[$k];foreach($hs as $h){$h=trim($h);if(preg_match('/^Bearer\s+(.+)$/i',$h,$m))return trim($m[1]);if(preg_match('/^[A-Fa-f0-9]{40,}$/',$h))return $h;}return '';}
 function clientAuth(PDO $p):array{$t=bearerToken();if($t==='')out(['error'=>'Não autenticado'],401);$q=$p->prepare("SELECT s.customer_id,c.name,c.phone,c.email,c.photo_data,ca.email_verified FROM client_sessions s JOIN customers c ON c.id=s.customer_id JOIN client_accounts ca ON ca.customer_id=c.id WHERE s.token_hash=? AND s.expires_at>NOW()");$q->execute([hash('sha256',$t)]);$r=$q->fetch();if(!$r)out(['error'=>'Sessão expirada ou inválida'],401);if(!(bool)$r['email_verified'])out(['error'=>'E-mail ainda não confirmado'],403);return ['customer_id'=>(int)$r['customer_id'],'name'=>$r['name'],'phone'=>$r['phone'],'email'=>$r['email'],'photo_data'=>$r['photo_data']];}
 function barberAuth(PDO $p):array{$t=bearerToken();if($t==='')out(['error'=>'Não autenticado'],401);$q=$p->prepare("SELECT s.barber_id,b.name FROM barber_sessions s JOIN barbers b ON b.id=s.barber_id WHERE s.token_hash=? AND s.expires_at>NOW() AND b.active=TRUE");$q->execute([hash('sha256',$t)]);$r=$q->fetch();if(!$r)out(['error'=>'Sessão expirada ou inválida'],401);if(!in_array(strtoupper($r['name']),['ALBERI','ALEX'],true))out(['error'=>'Acesso não autorizado'],403);return ['barber_id'=>(int)$r['barber_id'],'name'=>strtoupper($r['name'])];}
+function adminPasswordMatches(PDO $p,string $password):bool{
+  $p->exec("CREATE TABLE IF NOT EXISTS admin_settings (id INTEGER PRIMARY KEY,password_hash TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  $q=$p->query("SELECT password_hash FROM admin_settings WHERE id=1");
+  $hash=$q->fetchColumn();
+  if($hash!==false)return password_verify($password,(string)$hash);
+  $configured=envv('ADMIN_PASSWORD')?:'studioaa123';
+  return hash_equals($configured,$password);
+}
 function sendExpoPush(string $token,string $title,string $message,array $data=[]):void{if(!preg_match('/^ExponentPushToken\[.+\]$/',$token))return;$payload=json_encode(['to'=>$token,'title'=>$title,'body'=>$message,'sound'=>'default','data'=>$data],JSON_UNESCAPED_UNICODE);$ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Content-Type: application/json\r\nAccept: application/json\r\n",'content'=>$payload,'timeout'=>8,'ignore_errors'=>true]]);@file_get_contents('https://exp.host/--/api/v2/push/send',false,$ctx);}
 function notifyAppointmentCustomer(PDO $p,int $id,string $status):void{try{$q=$p->prepare("SELECT a.id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') date,TO_CHAR(a.appointment_time,'HH24:MI') time,c.phone,s.name service_name,b.name barber_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id JOIN barbers b ON b.id=a.barber_id WHERE a.id=?");$q->execute([$id]);$a=$q->fetch();if(!$a)return;$q=$p->prepare('SELECT expo_push_token FROM push_tokens WHERE phone=?');$q->execute([$a['phone']]);$t=(string)($q->fetchColumn()?:'');$labels=['pending'=>'Pendente','confirmed'=>'Confirmado','cancelled'=>'Cancelado','completed'=>'Concluído'];sendExpoPush($t,'Agendamento '.($labels[$status]??$status),"{$a['service_name']} com {$a['barber_name']} — {$a['date']} às {$a['time']}",['appointment_id'=>(int)$id,'status'=>$status]);}catch(Throwable $e){error_log($e->getMessage());}}
 function notifyAppointmentBarber(PDO $p,int $id):void{try{$q=$p->prepare("SELECT a.id,a.barber_id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') date,TO_CHAR(a.appointment_time,'HH24:MI') time,c.name customer_name,s.name service_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.id=?");$q->execute([$id]);$a=$q->fetch();if(!$a)return;$q=$p->prepare('SELECT expo_push_token FROM barber_push_tokens WHERE barber_id=?');$q->execute([(int)$a['barber_id']]);$t=(string)($q->fetchColumn()?:'');sendExpoPush($t,'🔔 Novo agendamento',"{$a['customer_name']} — {$a['service_name']} em {$a['date']} às {$a['time']}",['appointment_id'=>(int)$id,'status'=>'pending']);}catch(Throwable $e){error_log($e->getMessage());}}
@@ -152,7 +160,10 @@ function sendVerificationEmail(string $email,string $name,string $code):bool{
 }
 function scheduleRows(PDO $p,int $bid):array{$q=$p->prepare('SELECT day_of_week,active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week');$q->execute([$bid]);return $q->fetchAll();}
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/';$method=$_SERVER['REQUEST_METHOD'];
-try{
+try{if(str_starts_with($path,'/api/admin/')&&$path!=='/api/admin/login'&&$path!=='/api/admin/change-password'){
+$adminPassword=(string)($_SERVER['HTTP_X_ADMIN_PASSWORD']??'');
+if($adminPassword===''||!adminPasswordMatches(db(),$adminPassword))out(['error'=>'Não autorizado'],401);
+}
 if($path==='/api/health'&&$method==='GET')out(['ok'=>true,'service'=>'Studio A.A API','version'=>'client-email-ratings-photos-gallery-v25-gmail','database_configured'=>envv('DATABASE_URL')!=='' || envv('DATABASE_INTERNAL_URL')!=='' || envv('DATABASE_PRIVATE_URL')!=='' || envv('POSTGRES_URL')!=='' || envv('POSTGRESQL_URL')!=='']);
 if($path==='/api/services'&&$method==='GET')out(db()->query("SELECT id,name,duration,price FROM services WHERE active=TRUE ORDER BY sort_order,id")->fetchAll());
 if($path==='/api/barbers'&&$method==='GET')out(db()->query("SELECT id,name,specialty,rating,photo_data FROM barbers WHERE active=TRUE ORDER BY name")->fetchAll());
@@ -262,7 +273,21 @@ if($path==='/api/barber/change-password'&&$method==='POST'){$p=db();$a=barberAut
 if($path==='/api/barber/logout'&&$method==='POST'){$p=db();$t=bearerToken();if($t!=='')$p->prepare('DELETE FROM barber_sessions WHERE token_hash=?')->execute([hash('sha256',$t)]);out(['ok'=>true]);}
 if($path==='/api/barber/dashboard'&&$method==='GET'){$p=db();$a=barberAuth($p);$date=datev($_GET['date']??'');$q=$p->prepare("SELECT a.id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') date,TO_CHAR(a.appointment_time,'HH24:MI') time,a.status,c.name customer_name,c.phone customer_phone,s.name service_name,s.price FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN services s ON s.id=a.service_id WHERE a.barber_id=? AND a.appointment_date=? ORDER BY a.appointment_time");$q->execute([$a['barber_id'],$date]);out(['appointments'=>$q->fetchAll(),'barber'=>$a]);}
 if($path==='/api/barber/status'&&$method==='POST'){$p=db();$a=barberAuth($p);$d=body();$id=(int)($d['id']??0);$st=(string)($d['status']??'');if(!in_array($st,['confirmed','cancelled','completed'],true))out(['error'=>'Status inválido'],422);$q=$p->prepare('SELECT status FROM appointments WHERE id=? AND barber_id=?');$q->execute([$id,$a['barber_id']]);$old=$q->fetchColumn();if($old===false)out(['error'=>'Agendamento não encontrado'],404);$p->prepare('UPDATE appointments SET status=? WHERE id=?')->execute([$st,$id]);if($old!==$st)notifyAppointmentCustomer($p,$id,$st);out(['ok'=>true,'status'=>$st]);}
-if($path==='/api/admin/login'&&$method==='POST'){ $d=body();$configured=getenv('ADMIN_PASSWORD')?:'studioaa123';if(!hash_equals($configured,(string)($d['password']??'')))out(['error'=>'Senha incorreta'],401);out(['ok'=>true]); }
+if($path==='/api/admin/login'&&$method==='POST'){
+  $d=body();
+  $password=(string)($d['password']??'');
+  $p=db();
+  $p->exec("CREATE TABLE IF NOT EXISTS admin_settings (id INTEGER PRIMARY KEY,password_hash TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  $q=$p->query("SELECT password_hash FROM admin_settings WHERE id=1");
+  $hash=$q->fetchColumn();
+  if($hash!==false){
+    if(!password_verify($password,(string)$hash))out(['error'=>'Senha incorreta'],401);
+  }else{
+    $configured=envv('ADMIN_PASSWORD')?:'studioaa123';
+    if(!hash_equals($configured,$password))out(['error'=>'Senha incorreta'],401);
+  }
+  out(['ok'=>true]);
+}
 if($path==='/api/admin/dashboard'&&$method==='GET'){$p=db();$date=trim((string)($_GET['date']??''));$bid=(int)($_GET['barber_id']??0);$w=[];$pa=[];if($date!==''){$w[]='a.appointment_date=?';$pa[]=$date;}if($bid>0){$w[]='a.barber_id=?';$pa[]=$bid;}$sql="SELECT a.id,a.barber_id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') date,TO_CHAR(a.appointment_time,'HH24:MI') time,a.status,c.name customer_name,c.phone customer_phone,b.name barber_name,s.name service_name FROM appointments a JOIN customers c ON c.id=a.customer_id JOIN barbers b ON b.id=a.barber_id JOIN services s ON s.id=a.service_id";if($w)$sql.=' WHERE '.implode(' AND ',$w);$sql.=' ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC';$q=$p->prepare($sql);$q->execute($pa);$apps=$q->fetchAll();out(['stats'=>['today'=>(int)$p->query("SELECT COUNT(*) FROM appointments WHERE appointment_date=CURRENT_DATE AND status IN ('pending','confirmed')")->fetchColumn(),'clients'=>(int)$p->query('SELECT COUNT(*) FROM customers')->fetchColumn(),'barbers'=>(int)$p->query('SELECT COUNT(*) FROM barbers WHERE active=TRUE')->fetchColumn(),'services'=>(int)$p->query('SELECT COUNT(*) FROM services WHERE active=TRUE')->fetchColumn()],'appointments'=>$apps]);}
 if($path==='/api/admin/barbers'&&$method==='GET')out(db()->query('SELECT id,name,specialty,rating,active,photo_data FROM barbers ORDER BY name,id')->fetchAll());
 if($path==='/api/admin/barbers'&&in_array($method,['POST','PUT'],true)){$d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));$photo=(string)($d['photo_data']??'');if($name===''||strlen($photo)>2500000)out(['error'=>'Dados ou foto inválidos'],422);$p=db();$active=boolv($d['active']??true);$as=$active?'TRUE':'FALSE';if($id){$q=$p->prepare("UPDATE barbers SET name=?,specialty=?,rating=?,active=$as,photo_data=? WHERE id=? RETURNING id");$q->execute([$name,(string)($d['specialty']??''),(float)($d['rating']??5),$photo,$id]);}else{$q=$p->prepare("INSERT INTO barbers(name,specialty,rating,active,photo_data) VALUES(?,?,?,$as,?) RETURNING id");$q->execute([$name,(string)($d['specialty']??''),(float)($d['rating']??5),$photo]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);}
@@ -274,5 +299,24 @@ if($path==='/api/admin/gallery'&&$method==='GET')out(db()->query('SELECT id,name
 if($path==='/api/admin/gallery'&&in_array($method,['POST','PUT'],true)){$d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));$cat=trim((string)($d['category']??'Tendências'));$desc=trim((string)($d['description']??''));$photo=(string)($d['photo_data']??'');if($name===''||$photo===''||strlen($photo)>2500000)out(['error'=>'Nome e foto são obrigatórios (até 2,5 MB)'],422);$p=db();$active=boolv($d['active']??true);$as=$active?'TRUE':'FALSE';if($id){$q=$p->prepare("UPDATE gallery_cuts SET name=?,category=?,description=?,photo_data=?,active=$as,sort_order=? WHERE id=?");$q->execute([$name,$cat,$desc,$photo,(int)($d['sort_order']??0),$id]);}else{$q=$p->prepare("INSERT INTO gallery_cuts(name,category,description,photo_data,active,sort_order) VALUES(?,?,?,?,${as},?) RETURNING id");$q->execute([$name,$cat,$desc,$photo,(int)($d['sort_order']??0)]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);}
 if($path==='/api/admin/clear-history'&&$method==='POST'){ $q=db()->query("DELETE FROM appointments WHERE status IN ('cancelled','completed') RETURNING id");$ids=$q->fetchAll(PDO::FETCH_COLUMN);out(['ok'=>true,'deleted'=>count($ids),'ids'=>array_map('intval',$ids)]);}
 if($path==='/api/admin/status'&&$method==='POST'){$d=body();$id=(int)($d['id']??0);$st=(string)($d['status']??'');$p=db();$q=$p->prepare('SELECT status FROM appointments WHERE id=?');$q->execute([$id]);$old=$q->fetchColumn();if($old===false)out(['error'=>'Agendamento não encontrado'],404);$p->prepare('UPDATE appointments SET status=? WHERE id=?')->execute([$st,$id]);if($old!==$st)notifyAppointmentCustomer($p,$id,$st);out(['ok'=>true]);}
-out(['error'=>'Rota não encontrada'],404);
+if($path==='/api/admin/change-password'&&$method==='POST'){
+  $d=body();
+  $current=(string)($d['current_password']??'');
+  $new=(string)($d['new_password']??'');
+  $confirm=(string)($d['confirm_password']??'');
+  if(strlen($new)<8||$new!==$confirm)out(['error'=>'A nova senha deve ter pelo menos 8 caracteres e a confirmação deve ser igual'],422);
+  $p=db();
+  $p->exec("CREATE TABLE IF NOT EXISTS admin_settings (id INTEGER PRIMARY KEY,password_hash TEXT NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  $q=$p->query("SELECT password_hash FROM admin_settings WHERE id=1");
+  $hash=$q->fetchColumn();
+  if($hash!==false){
+    if(!password_verify($current,(string)$hash))out(['error'=>'Senha atual incorreta'],401);
+  }else{
+    $configured=envv('ADMIN_PASSWORD')?:'studioaa123';
+    if(!hash_equals($configured,$current))out(['error'=>'Senha atual incorreta'],401);
+  }
+  $p->prepare("INSERT INTO admin_settings(id,password_hash,updated_at) VALUES(1,?,NOW()) ON CONFLICT(id) DO UPDATE SET password_hash=EXCLUDED.password_hash,updated_at=NOW()")->execute([password_hash($new,PASSWORD_DEFAULT)]);
+  out(['ok'=>true,'message'=>'Senha administrativa alterada com sucesso']);
+}
+  out(['error'=>'Rota não encontrada'],404);
 }catch(Throwable $e){error_log($e->getMessage());out(['error'=>'Erro interno','detail'=>$e->getMessage()],500);}
