@@ -294,7 +294,112 @@ if($path==='/api/admin/barbers'&&in_array($method,['POST','PUT'],true)){$d=body(
 if($path==='/api/admin/services'&&$method==='GET')out(db()->query('SELECT id,name,duration,price,active,sort_order FROM services ORDER BY sort_order,id')->fetchAll());
 if($path==='/api/admin/services'&&in_array($method,['POST','PUT'],true)){$d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));$duration=(int)($d['duration']??0);$price=(float)($d['price']??0);$active=boolv($d['active']??true);$p=db();$as=$active?'TRUE':'FALSE';if($id){$q=$p->prepare("UPDATE services SET name=?,duration=?,price=?,active=$as,sort_order=? WHERE id=?");$q->execute([$name,$duration,$price,(int)($d['sort_order']??0),$id]);}else{$q=$p->prepare("INSERT INTO services(name,duration,price,active,sort_order) VALUES(?,?,?,$as,?) RETURNING id");$q->execute([$name,$duration,$price,(int)($d['sort_order']??0)]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);}
 if($path==='/api/admin/schedule'&&$method==='GET')out(['schedule'=>scheduleRows(db(),(int)$_GET['barber_id'])]);
-if($path==='/api/admin/schedule'&&in_array($method,['POST','PUT'],true)){$d=body();$bid=(int)($d['barber_id']??0);$rows=$d['schedule']??[];$p=db();$p->beginTransaction();$p->prepare('DELETE FROM studio_aa_schedules_v2 WHERE barber_id=?')->execute([$bid]);foreach($rows as $r){$q=$p->prepare('INSERT INTO studio_aa_schedules_v2(barber_id,day_of_week,start_time,end_time,break_start,break_end,active) VALUES(?,?,?,?,?,?,?)');$q->execute([$bid,(int)$r['day_of_week'],timev($r['start_time']??''),timev($r['end_time']??''),timev($r['break_start']??''),timev($r['break_end']??''),boolv($r['active']??true)]);} $p->commit();out(['ok'=>true]);}
+if($path==='/api/admin/schedule'&&in_array($method,['POST','PUT'],true)){
+    $d=body();
+
+    $bid=(int)($d['barber_id']??0);
+    $rows=$d['schedule']??[];
+
+    if($bid<=0){
+        out(['error'=>'Barbeiro inválido'],422);
+    }
+
+    if(!is_array($rows)){
+        out(['error'=>'Formato de horários inválido'],422);
+    }
+
+    /*
+     * Normaliza os dias recebidos e elimina duplicidades.
+     * Aceita tanto day_of_week quanto weekday para manter
+     * compatibilidade com versões anteriores do painel.
+     */
+    $normalized=[];
+
+    foreach($rows as $r){
+
+        if(!is_array($r)){
+            continue;
+        }
+
+        $day=$r['day_of_week']??$r['weekday']??null;
+
+        if($day===null||$day===''){
+            continue;
+        }
+
+        $day=(int)$day;
+
+        if($day<0||$day>6){
+            continue;
+        }
+
+        $normalized[$day]=[
+            'day_of_week'=>$day,
+            'active'=>boolv($r['active']??$r['open']??true),
+            'start_time'=>timev($r['start_time']??$r['start']??''),
+            'end_time'=>timev($r['end_time']??$r['end']??''),
+            'break_start'=>timev($r['break_start']??$r['bs']??''),
+            'break_end'=>timev($r['break_end']??$r['be']??'')
+        ];
+    }
+
+    $p=db();
+
+    try{
+        $p->beginTransaction();
+
+        /*
+         * Remove os horários antigos desse barbeiro.
+         * Depois gravamos somente um registro por dia.
+         */
+        $p->prepare(
+            'DELETE FROM studio_aa_schedules_v2 WHERE barber_id=?'
+        )->execute([$bid]);
+
+        $q=$p->prepare(
+            'INSERT INTO studio_aa_schedules_v2
+            (barber_id,day_of_week,start_time,end_time,break_start,break_end,active)
+            VALUES(?,?,?,?,?,?,?)'
+        );
+
+        foreach($normalized as $r){
+
+            $q->execute([
+                $bid,
+                $r['day_of_week'],
+                $r['start_time'],
+                $r['end_time'],
+                $r['break_start'],
+                $r['break_end'],
+                $r['active']
+            ]);
+        }
+
+        $p->commit();
+
+        out([
+            'ok'=>true,
+            'message'=>'Horários salvos com sucesso',
+            'barber_id'=>$bid,
+            'days_saved'=>count($normalized)
+        ]);
+
+    }catch(Throwable $e){
+
+        if($p->inTransaction()){
+            $p->rollBack();
+        }
+
+        error_log(
+            'Studio A.A schedule save: '.$e->getMessage()
+        );
+
+        out([
+            'error'=>'Não foi possível salvar os horários',
+            'detail'=>$e->getMessage()
+        ],500);
+    }
+}
 if($path==='/api/admin/gallery'&&$method==='GET')out(db()->query('SELECT id,name,category,description,photo_data,active,sort_order FROM gallery_cuts ORDER BY sort_order,id')->fetchAll());
 if($path==='/api/admin/gallery'&&in_array($method,['POST','PUT'],true)){$d=body();$id=(int)($d['id']??0);$name=trim((string)($d['name']??''));$cat=trim((string)($d['category']??'Tendências'));$desc=trim((string)($d['description']??''));$photo=(string)($d['photo_data']??'');if($name===''||$photo===''||strlen($photo)>2500000)out(['error'=>'Nome e foto são obrigatórios (até 2,5 MB)'],422);$p=db();$active=boolv($d['active']??true);$as=$active?'TRUE':'FALSE';if($id){$q=$p->prepare("UPDATE gallery_cuts SET name=?,category=?,description=?,photo_data=?,active=$as,sort_order=? WHERE id=?");$q->execute([$name,$cat,$desc,$photo,(int)($d['sort_order']??0),$id]);}else{$q=$p->prepare("INSERT INTO gallery_cuts(name,category,description,photo_data,active,sort_order) VALUES(?,?,?,?,${as},?) RETURNING id");$q->execute([$name,$cat,$desc,$photo,(int)($d['sort_order']??0)]);$id=(int)$q->fetchColumn();}out(['ok'=>true,'id'=>$id]);}
 if($path==='/api/admin/clear-history'&&$method==='POST'){ $q=db()->query("DELETE FROM appointments WHERE status IN ('cancelled','completed') RETURNING id");$ids=$q->fetchAll(PDO::FETCH_COLUMN);out(['ok'=>true,'deleted'=>count($ids),'ids'=>array_map('intval',$ids)]);}
