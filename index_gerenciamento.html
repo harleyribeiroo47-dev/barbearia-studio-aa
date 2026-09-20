@@ -34,6 +34,8 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.agendaActions .btn{padding:7px 9px;font-size:10px}.btn.confirm{border-color:#245b36;color:#7ee787}.btn.complete{border-color:#24506b;color:#7dd3fc}.btn.reactivate{border-color:#6b531d;color:#f0c85a}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
 
 .manageGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.manageCard{background:#111;border:1px solid #2b2b2b;border-radius:16px;padding:16px}.manageCard h3{margin:0 0 12px;font-size:14px;color:var(--gold)}.manageRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.manageRow.three{grid-template-columns:1fr 1fr 1fr}.manageRow.four{grid-template-columns:1.2fr .7fr .7fr .7fr}.smallBtn{padding:8px 10px;font-size:11px}.scheduleTable{width:100%;border-collapse:collapse;font-size:12px}.scheduleTable th,.scheduleTable td{padding:7px;border-bottom:1px solid #252525;text-align:left}.scheduleTable input,.scheduleTable select{width:100%;background:#090909;color:#fff;border:1px solid #333;border-radius:8px;padding:7px}.check{width:auto!important}.manageList{max-height:360px;overflow:auto}.manageItem{padding:10px 0;border-bottom:1px solid #252525}.manageItem:last-child{border-bottom:0}.manageActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}@media(max-width:780px){.manageGrid{grid-template-columns:1fr}.manageRow,.manageRow.three,.manageRow.four{grid-template-columns:1fr}}
+
+.galleryAdminGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.galleryAdminItem{background:#0c0c0c;border:1px solid #2b2b2b;border-radius:14px;padding:12px}.galleryAdminItem img{width:100%;height:180px;object-fit:cover;border-radius:10px;border:1px solid #302817}.galleryAdminFields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.galleryAdminFields input,.galleryAdminFields textarea{width:100%;background:#090909;color:#fff;border:1px solid #333;border-radius:8px;padding:8px}.galleryAdminFields textarea{min-height:70px;resize:vertical}.historyBox{margin-top:14px;border:1px solid #3b2626;background:#130d0d;border-radius:16px;padding:16px}@media(max-width:780px){.galleryAdminGrid{grid-template-columns:1fr}.galleryAdminFields{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -99,6 +101,14 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
     + NOVA FOTO
   </button>
 </div>
+    <div class="historyBox">
+      <h3 style="margin:0 0 8px;color:var(--gold)">LIMPEZA DO HISTÓRICO</h3>
+      <div class="muted">Remove somente agendamentos com status <b>cancelado</b> ou <b>concluído</b>. Agendamentos pendentes e confirmados permanecem.</div>
+      <div class="actions">
+        <button class="btn danger" type="button" onclick="clearAppointmentHistory()">LIMPAR HISTÓRICO</button>
+      </div>
+      <div id="clearHistoryMessage"></div>
+    </div>
     <div class="sectionTitle" style="margin-top:20px">TODOS OS AGENDAMENTOS</div>
     <div class="table" id="appointments"></div>
     <div class="actions">
@@ -150,6 +160,9 @@ let services=[...fallbackServices], barbers=[...fallbackBarbers], chosenTime="";
 let publicSchedule=null, scheduleRequestSeq=0, availabilityRequestSeq=0;
 let adminPassword="", agendaAppointments=[], barberSchedules={};
 let barberPhotoDrafts={};
+let galleryItems=[];
+let galleryPhotoDrafts={};
+let newGalleryPhotoDraft=null;
 
 function previewBarberPhoto(id,input){
   const file=input?.files?.[0];
@@ -600,12 +613,17 @@ async function loadManagement(){
   barbers=Array.isArray(bdata)?bdata:barbers;
   services=Array.isArray(sdata)?sdata:services;
   render();
-  renderManageBarbers(); renderManageServices();
+  renderManageBarbers();
+  renderManageServices();
   const sb=document.querySelector('#scheduleBarber');
   sb.innerHTML=barbers.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
   await loadScheduleEditor();
- }catch(e){ console.warn(e); }
+  await loadGallery();
+ }catch(e){
+  console.warn('Falha ao carregar gerenciamento:',e);
+ }
 }
+
 function renderManageBarbers(){
  const box=document.querySelector('#manageBarbers');
  if(!box)return;
@@ -855,132 +873,164 @@ function newServiceForm(){
  const box=document.querySelector('#manageServices');box.insertAdjacentHTML('afterbegin',`<div class="manageItem"><div class="manageRow three"><input id="newSN" placeholder="Nome do serviço"><input id="newSD" type="number" min="5" value="30"><input id="newSP" type="number" min="0" step="0.01" value="35"></div><div class="manageActions"><button class="btn primary smallBtn" onclick="createService()">CRIAR</button></div></div>`);
 }
 async function createService(){try{await api('/api/admin/services',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({name:document.querySelector('#newSN').value.trim(),duration:Number(document.querySelector('#newSD').value||30),price:Number(document.querySelector('#newSP').value||0),active:true})});await loadManagement();alert('Serviço criado.');}catch(e){alert('Não foi possível criar o serviço.');}}
+async function loadGallery(){
+ const box=document.querySelector('#manageGallery');
+ if(!box)return;
+ try{
+  const data=await api('/api/admin/gallery',{headers:{'X-Admin-Password':adminPassword}});
+  galleryItems=Array.isArray(data)?data:[];
+  renderManageGallery();
+ }catch(e){
+  console.error(e);
+  box.innerHTML=`<div class="notice err">Não foi possível carregar a galeria.<br><small>${esc(e.message||'Erro desconhecido')}</small></div>`;
+ }
+}
+
+function renderManageGallery(){
+ const box=document.querySelector('#manageGallery');
+ if(!box)return;
+ if(!galleryItems.length){
+  box.innerHTML='<div class="notice">Nenhuma foto cadastrada ainda.</div>';
+  return;
+ }
+ box.innerHTML=`<div class="galleryAdminGrid">${galleryItems.map(g=>`
+  <div class="galleryAdminItem">
+    <img src="${g.photo_data||''}" alt="${esc(g.name||'Foto')}" id="gimg_${g.id}">
+    <div class="galleryAdminFields">
+      <input id="gn_${g.id}" value="${esc(g.name||'')}" placeholder="Nome da foto">
+      <input id="gc_${g.id}" value="${esc(g.category||'Tendências')}" placeholder="Categoria">
+      <textarea id="gd_${g.id}" placeholder="Descrição">${esc(g.description||'')}</textarea>
+      <input id="go_${g.id}" type="number" value="${Number(g.sort_order||0)}" placeholder="Ordem">
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <label class="btn smallBtn" style="cursor:pointer">📷 TROCAR FOTO<input type="file" accept="image/*" style="display:none" onchange="previewGalleryPhoto(${Number(g.id)},this)"></label>
+      <label class="muted"><input class="check" id="ga_${g.id}" type="checkbox" ${g.active!==false?'checked':''}> Ativa</label>
+    </div>
+    <div id="gmsg_${g.id}" class="muted" style="margin-top:6px">${g.active!==false?'Foto ativa':'Foto desativada'}</div>
+    <div class="manageActions"><button class="btn smallBtn" onclick="saveGallery(${Number(g.id)})">SALVAR FOTO</button></div>
+  </div>`).join('')}</div>`;
+}
+
+function compressImageFile(file,callback){
+ if(!file||!file.type.startsWith('image/')){alert('Selecione uma imagem válida.');return;}
+ if(file.size>5*1024*1024){alert('A imagem deve ter no máximo 5 MB.');return;}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  const img=new Image();
+  img.onload=()=>{
+   const max=1400; let w=img.width,h=img.height;
+   if(w>max||h>max){if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+   canvas.getContext('2d').drawImage(img,0,0,w,h);
+   callback(canvas.toDataURL('image/jpeg',0.84));
+  };
+  img.src=reader.result;
+ };
+ reader.readAsDataURL(file);
+}
+
+function previewGalleryPhoto(id,input){
+ const file=input?.files?.[0];
+ if(!file)return;
+ compressImageFile(file,data=>{
+  galleryPhotoDrafts[id]=data;
+  const img=document.querySelector(`#gimg_${id}`);if(img)img.src=data;
+  const msg=document.querySelector(`#gmsg_${id}`);if(msg)msg.textContent='Nova foto selecionada. Clique em SALVAR FOTO.';
+ });
+}
+
+function newGalleryForm(){
+ const box=document.querySelector('#manageGallery');
+ if(!box)return;
+ if(document.querySelector('#newGalleryBox'))return;
+ box.insertAdjacentHTML('afterbegin',`<div class="manageItem" id="newGalleryBox">
+  <div class="galleryAdminFields">
+   <input id="newGN" placeholder="Nome da foto">
+   <input id="newGC" value="Tendências" placeholder="Categoria">
+   <textarea id="newGD" placeholder="Descrição"></textarea>
+   <input id="newGO" type="number" value="0" placeholder="Ordem">
+  </div>
+  <div style="margin-top:10px"><label class="btn smallBtn" style="cursor:pointer">📷 ESCOLHER FOTO<input id="newGP" type="file" accept="image/*" style="display:none" onchange="previewNewGalleryPhoto(this)"></label><div id="newGPreview" class="muted" style="margin-top:8px">Nenhuma foto selecionada</div></div>
+  <div class="manageActions"><button class="btn primary smallBtn" onclick="createGallery()">CRIAR FOTO</button><button class="btn smallBtn" onclick="cancelNewGallery()">CANCELAR</button></div>
+ </div>`);
+}
+
+function previewNewGalleryPhoto(input){
+ const file=input?.files?.[0];if(!file)return;
+ compressImageFile(file,data=>{
+  newGalleryPhotoDraft=data;
+  const box=document.querySelector('#newGPreview');
+  if(box)box.innerHTML=`<img src="${data}" alt="Nova foto" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid #302817">`;
+ });
+}
+
+function cancelNewGallery(){newGalleryPhotoDraft=null;document.querySelector('#newGalleryBox')?.remove();}
+
+async function createGallery(){
+ const name=document.querySelector('#newGN')?.value.trim();
+ if(!name||!newGalleryPhotoDraft){alert('Informe o nome e selecione uma foto.');return;}
+ try{
+  await api('/api/admin/gallery',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({name,category:document.querySelector('#newGC').value.trim()||'Tendências',description:document.querySelector('#newGD').value.trim(),photo_data:newGalleryPhotoDraft,active:true,sort_order:Number(document.querySelector('#newGO').value||0)})});
+  newGalleryPhotoDraft=null;
+  await loadGallery();
+  alert('Foto adicionada à galeria.');
+ }catch(e){alert(e.message||'Não foi possível adicionar a foto.');}
+}
+
+async function saveGallery(id){
+ const item=galleryItems.find(g=>Number(g.id)===Number(id));
+ const photo=galleryPhotoDrafts[id]!==undefined?galleryPhotoDrafts[id]:(item?.photo_data||'');
+ try{
+  await api('/api/admin/gallery',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({id,name:document.querySelector(`#gn_${id}`).value.trim(),category:document.querySelector(`#gc_${id}`).value.trim()||'Tendências',description:document.querySelector(`#gd_${id}`).value.trim(),photo_data:photo,active:document.querySelector(`#ga_${id}`).checked,sort_order:Number(document.querySelector(`#go_${id}`).value||0)})});
+  delete galleryPhotoDrafts[id];
+  await loadGallery();
+  alert('Foto atualizada com sucesso.');
+ }catch(e){alert(e.message||'Não foi possível atualizar a foto.');}
+}
+
+async function clearAppointmentHistory(){
+ if(!adminPassword)return;
+ if(!confirm('Limpar o histórico? Serão removidos somente os agendamentos cancelados ou concluídos.'))return;
+ const msg=document.querySelector('#clearHistoryMessage');
+ try{
+  const result=await api('/api/admin/clear-history',{method:'POST',headers:{'X-Admin-Password':adminPassword}});
+  if(msg){msg.className='notice ok';msg.textContent=`Histórico limpo. ${Number(result.deleted||0)} agendamento(s) removido(s).`;}
+  await loadDashboard();
+ }catch(e){
+  if(msg){msg.className='notice err';msg.textContent=e.message||'Não foi possível limpar o histórico.';}
+ }
+}
+
 async function loadScheduleEditor(){
  const id=document.querySelector('#scheduleBarber')?.value;
  const box=document.querySelector('#scheduleEditor');
-
  if(!id||!box)return;
-
  try{
-  const data=await api(
-   `/api/admin/schedule?barber_id=${encodeURIComponent(id)}`,
-   {
-    headers:{
-     'X-Admin-Password':adminPassword
-    }
-   }
-  );
-
-  barberSchedules[id]=data.schedule||[];
-
+  const data=await api(`/api/admin/schedule?barber_id=${encodeURIComponent(id)}`,{headers:{'X-Admin-Password':adminPassword}});
+  barberSchedules[id]=Array.isArray(data.schedule)?data.schedule:[];
   const map={};
-
-  (data.schedule||[]).forEach(x=>{
-   map[String(x.day_of_week)]=x;
+  barberSchedules[id].forEach(x=>{
+    const day=x.day_of_week ?? x.weekday;
+    if(day!==undefined&&day!==null)map[String(day)]=x;
   });
-
-  const days=[
-   ['1','Segunda'],
-   ['2','Terça'],
-   ['3','Quarta'],
-   ['4','Quinta'],
-   ['5','Sexta'],
-   ['6','Sábado'],
-   ['0','Domingo']
-  ];
-
-  box.innerHTML=`
-   <table class="scheduleTable">
-    <thead>
-     <tr>
-      <th>Dia</th>
-      <th>Aberto</th>
-      <th>Início</th>
-      <th>Fim</th>
-      <th>Intervalo início</th>
-      <th>Intervalo fim</th>
-     </tr>
-    </thead>
-
-    <tbody>
-     ${days.map(([d,n])=>{
-      const x=map[d]||{
-       active:d!=='0',
-       start_time:'09:00',
-       end_time:'18:00',
-       break_start:'12:30',
-       break_end:'14:00'
-      };
-
-      return `
-       <tr>
-        <td>${n}</td>
-
-        <td>
-         <input
-          class="check"
-          type="checkbox"
-          id="open_${d}"
-          ${x.active?'checked':''}
-         >
-        </td>
-
-        <td>
-         <input
-          type="time"
-          id="start_${d}"
-          value="${esc(String(x.start_time||'09:00').slice(0,5))}"
-         >
-        </td>
-
-        <td>
-         <input
-          type="time"
-          id="end_${d}"
-          value="${esc(String(x.end_time||'18:00').slice(0,5))}"
-         >
-        </td>
-
-        <td>
-         <input
-          type="time"
-          id="bs_${d}"
-          value="${esc(String(x.break_start||'12:30').slice(0,5))}"
-         >
-        </td>
-
-        <td>
-         <input
-          type="time"
-          id="be_${d}"
-          value="${esc(String(x.break_end||'14:00').slice(0,5))}"
-         >
-        </td>
-       </tr>
-      `;
-     }).join('')}
-    </tbody>
-   </table>
-
-   <div class="manageActions">
-    <button
-     class="btn primary"
-     onclick="saveSchedule(${Number(id)})"
-    >
-     SALVAR HORÁRIOS
-    </button>
-   </div>
-  `;
-
+  const days=[['1','Segunda'],['2','Terça'],['3','Quarta'],['4','Quinta'],['5','Sexta'],['6','Sábado'],['0','Domingo']];
+  box.innerHTML=`<table class="scheduleTable"><thead><tr><th>Dia</th><th>Aberto</th><th>Início</th><th>Fim</th><th>Intervalo início</th><th>Intervalo fim</th></tr></thead><tbody>${days.map(([d,n])=>{
+    const x=map[d]||{};
+    const active=x.active!==undefined?!!x.active:(x.open!==undefined?!!x.open:d!=='0');
+    const start=String(x.start_time??x.start??'09:00').slice(0,5);
+    const end=String(x.end_time??x.end??'20:30').slice(0,5);
+    const bs=String(x.break_start??'12:30').slice(0,5);
+    const be=String(x.break_end??'14:00').slice(0,5);
+    return `<tr><td>${n}</td><td><input class="check" type="checkbox" id="open_${d}" ${active?'checked':''}></td><td><input type="time" id="start_${d}" value="${esc(start)}"></td><td><input type="time" id="end_${d}" value="${esc(end)}"></td><td><input type="time" id="bs_${d}" value="${esc(bs)}"></td><td><input type="time" id="be_${d}" value="${esc(be)}"></td></tr>`;
+  }).join('')}</tbody></table><div class="manageActions"><button class="btn primary" onclick="saveSchedule(${Number(id)})">SALVAR HORÁRIOS</button></div>`;
  }catch(e){
   console.error(e);
-  box.innerHTML=
-   '<div class="notice err">Não foi possível carregar os horários.</div>';
+  box.innerHTML=`<div class="notice err">Não foi possível carregar os horários.<br><small>${esc(e.message||'Erro desconhecido')}</small></div>`;
  }
 }
+
 async function saveSchedule(barberId){
  const days=['1','2','3','4','5','6','0'];
-
  const schedule=days.map(d=>({
   day_of_week:Number(d),
   active:document.querySelector(`#open_${d}`).checked,
@@ -989,28 +1039,20 @@ async function saveSchedule(barberId){
   break_start:document.querySelector(`#bs_${d}`).value,
   break_end:document.querySelector(`#be_${d}`).value
  }));
-
  try{
-  await api('/api/admin/schedule',{
+  const result=await api('/api/admin/schedule',{
    method:'POST',
-   headers:{
-    'X-Admin-Password':adminPassword
-   },
-   body:JSON.stringify({
-    barber_id:Number(barberId),
-    schedule:schedule
-   })
+   headers:{'X-Admin-Password':adminPassword},
+   body:JSON.stringify({barber_id:Number(barberId),schedule})
   });
-
-  alert('Horários salvos com sucesso.');
-
+  alert(result.message||'Horários salvos com sucesso.');
   await loadScheduleEditor();
-
  }catch(e){
-  console.error(e);
+  console.error('Erro ao salvar horários:',e);
   alert(e.message||'Não foi possível salvar os horários.');
  }
 }
+
 function adminLogout(){
  adminPassword="";
  document.querySelector("#dashboard").style.display="none";
