@@ -34,6 +34,8 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
 .agendaTools{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:16px;align-items:end}.agendaTools .field{min-width:0}.agenda{margin-top:12px;border:1px solid #2b2b2b;border-radius:16px;overflow:hidden;background:#0d0d0d}.agendaHeader{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #2b2b2b}.agendaDay{color:var(--gold2);font-weight:900}.agendaGrid{display:grid;grid-template-columns:repeat(2,1fr)}.agendaSlot{min-height:76px;padding:12px;border-bottom:1px solid #242424;border-right:1px solid #242424;display:flex;gap:12px;align-items:flex-start}.agendaSlot:nth-child(even){border-right:0}.agendaTime{width:54px;color:var(--gold2);font-weight:900;font-size:13px;padding-top:3px}.agendaInfo{flex:1}.agendaFree{color:#666;font-size:12px;padding-top:3px}.agendaClient{font-weight:900}.agendaMeta{color:var(--muted);font-size:12px;margin-top:3px}.status{font-size:11px;font-weight:900;margin-top:6px;display:inline-block}.status.pending{color:#f0c85a}.status.confirmed{color:#7dd3fc}.status.completed{color:#7ee787}.status.cancelled{color:#888}.agendaActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.agendaActions .btn{padding:7px 9px;font-size:10px}.btn.confirm{border-color:#245b36;color:#7ee787}.btn.complete{border-color:#24506b;color:#7dd3fc}.btn.reactivate{border-color:#6b531d;color:#f0c85a}.agendaEmpty{padding:22px;color:var(--muted);text-align:center}.btn.small{padding:8px 10px;font-size:11px}@media(max-width:780px){.agendaTools{grid-template-columns:1fr}.agendaGrid{grid-template-columns:1fr}.agendaSlot{border-right:0}}
 
 .manageGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.manageCard{background:#111;border:1px solid #2b2b2b;border-radius:16px;padding:16px}.manageCard h3{margin:0 0 12px;font-size:14px;color:var(--gold)}.manageRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.manageRow.three{grid-template-columns:1fr 1fr 1fr}.manageRow.four{grid-template-columns:1.2fr .7fr .7fr .7fr}.smallBtn{padding:8px 10px;font-size:11px}.scheduleTable{width:100%;border-collapse:collapse;font-size:12px}.scheduleTable th,.scheduleTable td{padding:7px;border-bottom:1px solid #252525;text-align:left}.scheduleTable input,.scheduleTable select{width:100%;background:#090909;color:#fff;border:1px solid #333;border-radius:8px;padding:7px}.check{width:auto!important}.manageList{max-height:360px;overflow:auto}.manageItem{padding:10px 0;border-bottom:1px solid #252525}.manageItem:last-child{border-bottom:0}.manageActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}@media(max-width:780px){.manageGrid{grid-template-columns:1fr}.manageRow,.manageRow.three,.manageRow.four{grid-template-columns:1fr}}
+
+.galleryAdminGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.galleryAdminItem{background:#0c0c0c;border:1px solid #2b2b2b;border-radius:14px;padding:12px}.galleryAdminItem img{width:100%;height:180px;object-fit:cover;border-radius:10px;border:1px solid #302817}.galleryAdminFields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.galleryAdminFields input,.galleryAdminFields textarea{width:100%;background:#090909;color:#fff;border:1px solid #333;border-radius:8px;padding:8px}.galleryAdminFields textarea{min-height:70px;resize:vertical}.historyBox{margin-top:14px;border:1px solid #3b2626;background:#130d0d;border-radius:16px;padding:16px}@media(max-width:780px){.galleryAdminGrid{grid-template-columns:1fr}.galleryAdminFields{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -84,9 +86,58 @@ main{max-width:1100px;margin:auto;padding:20px 18px 100px}.hero{display:grid;gri
       <div class="manageCard"><h3>SERVIÇOS / CORTES E VALORES</h3><div id="manageServices" class="manageList"></div><button class="btn primary smallBtn" type="button" onclick="newServiceForm()">+ NOVO SERVIÇO</button></div>
     </div>
     <div class="manageCard" style="margin-top:14px"><h3>HORÁRIOS DE ATENDIMENTO POR BARBEIRO</h3><div class="field"><label>Barbeiro</label><select id="scheduleBarber" onchange="loadScheduleEditor()"></select></div><div id="scheduleEditor" style="margin-top:12px"></div></div>
+   <div class="manageCard" style="margin-top:14px">
+  <h3>GALERIA DE FOTOS</h3>
+
+  <div id="manageGallery" class="manageList">
+    <div class="notice">Carregando galeria...</div>
+  </div>
+
+  <button
+    class="btn primary smallBtn"
+    type="button"
+    onclick="newGalleryForm()"
+  >
+    + NOVA FOTO
+  </button>
+</div>
+    <div class="historyBox">
+      <h3 style="margin:0 0 8px;color:var(--gold)">LIMPEZA DO HISTÓRICO</h3>
+      <div class="muted">Remove somente agendamentos com status <b>cancelado</b> ou <b>concluído</b>. Agendamentos pendentes e confirmados permanecem.</div>
+      <div class="actions">
+        <button class="btn danger" type="button" onclick="clearAppointmentHistory()">LIMPAR HISTÓRICO</button>
+      </div>
+      <div id="clearHistoryMessage"></div>
+    </div>
     <div class="sectionTitle" style="margin-top:20px">TODOS OS AGENDAMENTOS</div>
     <div class="table" id="appointments"></div>
-    <div class="actions"><button class="btn danger" onclick="adminLogout()">SAIR</button></div>
+    <div class="actions">
+  <button class="btn" type="button" onclick="showChangePassword()">ALTERAR SENHA</button>
+  <button class="btn danger" onclick="adminLogout()">SAIR</button>
+</div>
+
+<div id="changePasswordBox" class="manageCard" style="display:none;margin-top:14px">
+  <h3>SEGURANÇA ADMINISTRATIVA</h3>
+  <div class="formgrid">
+    <div class="field">
+      <label>Senha atual</label>
+      <input id="currentAdminPassword" type="password" autocomplete="current-password">
+    </div>
+    <div class="field">
+      <label>Nova senha</label>
+      <input id="newAdminPassword" type="password" minlength="8" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>Confirmar nova senha</label>
+      <input id="confirmAdminPassword" type="password" minlength="8" autocomplete="new-password">
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="button" onclick="changeAdminPassword()">SALVAR NOVA SENHA</button>
+    <button class="btn" type="button" onclick="hideChangePassword()">CANCELAR</button>
+  </div>
+  <div id="changePasswordMessage"></div>
+</div>
   </div>
 </section>
 <div class="footer">BARBEARIA STUDIO A.A • ESTILO • RESPEITO • ATITUDE</div>
@@ -101,22 +152,180 @@ const fallbackServices=[
  {id:5,name:"Pigmentação de Barba",duration:30,price:40}
 ];
 const fallbackBarbers=[
- {id:1,name:"Lucas",specialty:"Especialista em degradê",rating:4.9},
- {id:2,name:"Rafael",specialty:"Barba e bigode",rating:4.8},
- {id:3,name:"Thiago",specialty:"Corte masculino",rating:4.7},
- {id:4,name:"Matheus",specialty:"Estilo clássico",rating:4.9}
+ {id:1,name:"Alberi",specialty:"Barbeiro profissional",rating:5.0},
+ {id:2,name:"Alex",specialty:"Barbeiro profissional",rating:5.0}
 ];
 const times=["09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00"];
 let services=[...fallbackServices], barbers=[...fallbackBarbers], chosenTime="";
 let publicSchedule=null, scheduleRequestSeq=0, availabilityRequestSeq=0;
 let adminPassword="", agendaAppointments=[], barberSchedules={};
+let barberPhotoDrafts={};
+let galleryItems=[];
+let galleryPhotoDrafts={};
+let newGalleryPhotoDraft=null;
 
+function previewBarberPhoto(id,input){
+  const file=input?.files?.[0];
+  if(!file)return;
 
+  if(!file.type.startsWith("image/")){
+    alert("Selecione uma imagem válida.");
+    input.value="";
+    return;
+  }
+
+  if(file.size>5*1024*1024){
+    alert("A imagem deve ter no máximo 5 MB.");
+    input.value="";
+    return;
+  }
+
+  const reader=new FileReader();
+
+  reader.onload=()=>{
+    const img=new Image();
+
+    img.onload=()=>{
+      const max=1000;
+      let w=img.width;
+      let h=img.height;
+
+      if(w>max||h>max){
+        if(w>=h){
+          h=Math.round(h*max/w);
+          w=max;
+        }else{
+          w=Math.round(w*max/h);
+          h=max;
+        }
+      }
+
+      const canvas=document.createElement("canvas");
+      canvas.width=w;
+      canvas.height=h;
+
+      const ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,w,h);
+
+      const compressed=canvas.toDataURL("image/jpeg",0.82);
+
+      barberPhotoDrafts[id]=compressed;
+
+      const msg=document.querySelector(`#bpmsg_${id}`);
+      if(msg){
+        msg.textContent="Nova foto selecionada. Clique em SALVAR BARBEIRO.";
+      }
+
+      const inputBox=input.parentElement?.parentElement;
+      const oldImg=inputBox?.querySelector("img");
+
+      if(oldImg){
+        oldImg.src=compressed;
+      }else{
+        const avatar=inputBox?.querySelector(".avatar");
+
+        if(avatar){
+          avatar.outerHTML=
+            `<img src="${compressed}" alt="Foto do barbeiro" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:1px solid #5b471f">`;
+        }
+      }
+    };
+
+    img.src=reader.result;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function showChangePassword(){
+  const box=document.querySelector("#changePasswordBox");
+  if(box)box.style.display="block";
+
+  const msg=document.querySelector("#changePasswordMessage");
+  if(msg)msg.innerHTML="";
+}
+
+function hideChangePassword(){
+  const box=document.querySelector("#changePasswordBox");
+
+  if(box)box.style.display="none";
+
+  ["currentAdminPassword","newAdminPassword","confirmAdminPassword"].forEach(id=>{
+    const el=document.querySelector("#"+id);
+    if(el)el.value="";
+  });
+}
+
+async function changeAdminPassword(){
+  const current=document.querySelector("#currentAdminPassword").value;
+  const newPassword=document.querySelector("#newAdminPassword").value;
+  const confirm=document.querySelector("#confirmAdminPassword").value;
+  const msg=document.querySelector("#changePasswordMessage");
+
+  if(newPassword.length<8){
+    msg.className="notice err";
+    msg.textContent="A nova senha deve ter pelo menos 8 caracteres.";
+    return;
+  }
+
+  if(newPassword!==confirm){
+    msg.className="notice err";
+    msg.textContent="A confirmação da nova senha não confere.";
+    return;
+  }
+
+  try{
+    const r=await fetch(API+"/api/admin/change-password",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        current_password:current,
+        new_password:newPassword,
+        confirm_password:confirm
+      })
+    });
+
+    const data=await r.json();
+
+    if(!r.ok||!data.ok){
+      throw new Error(data.error||"Não foi possível alterar a senha.");
+    }
+
+    msg.className="notice ok";
+    msg.textContent="Senha alterada com sucesso. Por segurança, faça login novamente.";
+
+    setTimeout(()=>{
+      hideChangePassword();
+      adminLogout();
+    },1500);
+
+  }catch(e){
+    msg.className="notice err";
+    msg.textContent=e.message||"Erro ao alterar a senha.";
+  }
+}
 function money(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function render(){
  document.querySelector("#serviceList").innerHTML=services.map(s=>`<div class="item"><span><strong>${esc(s.name)}</strong><span class="muted">${s.duration} min</span></span><span class="price">${money(s.price)}</span></div>`).join("");
- document.querySelector("#barberList").innerHTML=barbers.map(b=>`<div class="card" style="padding:16px"><div class="barber"><div class="avatar">${esc(b.name[0])}</div><div><strong>${esc(b.name)}</strong><div class="muted">${esc(b.specialty||"Barbeiro")}</div><div class="rating">★ ${b.rating||"5.0"}</div></div></div></div>`).join("");
+ document.querySelector("#barberList").innerHTML=barbers.map(b=>`
+  <div class="card" style="padding:16px">
+    <div class="barber">
+      ${
+        b.photo_data
+          ? `<img src="${b.photo_data}" alt="${esc(b.name)}" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:1px solid #5b471f">`
+          : `<div class="avatar">${esc((b.name||"?")[0])}</div>`
+      }
+      <div>
+        <strong>${esc(b.name)}</strong>
+        <div class="muted">${esc(b.specialty||"Barbeiro")}</div>
+        <div class="rating">★ ${b.rating||"5.0"}</div>
+      </div>
+    </div>
+  </div>
+`).join("");
  document.querySelector("#service").innerHTML=services.map(s=>`<option value="${s.id}">${esc(s.name)} — ${money(s.price)}</option>`).join("");
  document.querySelector("#barber").innerHTML=barbers.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join("");
  renderSlots();
@@ -404,47 +613,444 @@ async function loadManagement(){
   barbers=Array.isArray(bdata)?bdata:barbers;
   services=Array.isArray(sdata)?sdata:services;
   render();
-  renderManageBarbers(); renderManageServices();
+  renderManageBarbers();
+  renderManageServices();
   const sb=document.querySelector('#scheduleBarber');
   sb.innerHTML=barbers.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('');
   await loadScheduleEditor();
- }catch(e){ console.warn(e); }
+  await loadGallery();
+ }catch(e){
+  console.warn('Falha ao carregar gerenciamento:',e);
+ }
 }
+
 function renderManageBarbers(){
- const box=document.querySelector('#manageBarbers'); if(!box)return;
- box.innerHTML=barbers.map(b=>`<div class="manageItem"><div class="manageRow three"><input id="bn_${b.id}" value="${esc(b.name)}" placeholder="Nome"><input id="bs_${b.id}" value="${esc(b.specialty||'')}" placeholder="Especialidade"><input id="br_${b.id}" type="number" min="0" max="5" step="0.1" value="${esc(b.rating??5)}" placeholder="Nota"></div><label class="muted"><input class="check" id="ba_${b.id}" type="checkbox" ${b.active!==false?'checked':''}> Ativo</label><div class="manageActions"><button class="btn smallBtn" onclick="saveBarber(${Number(b.id)})">SALVAR BARBEIRO</button></div></div>`).join('');
+ const box=document.querySelector('#manageBarbers');
+ if(!box)return;
+
+ box.innerHTML=barbers.map(b=>`
+  <div class="manageItem">
+    <div class="manageRow three">
+      <input id="bn_${b.id}" value="${esc(b.name)}" placeholder="Nome">
+      <input id="bs_${b.id}" value="${esc(b.specialty||'')}" placeholder="Especialidade">
+      <input id="br_${b.id}" type="number" min="0" max="5" step="0.1" value="${esc(b.rating??5)}" placeholder="Nota">
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:center;margin:10px 0">
+      ${b.photo_data
+        ? `<img src="${b.photo_data}" alt="${esc(b.name)}" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:1px solid #5b471f">`
+        : `<div class="avatar" style="width:58px;height:58px">${esc((b.name||'?')[0])}</div>`
+      }
+
+      <div style="flex:1">
+        <label class="btn smallBtn" style="display:inline-block;cursor:pointer">
+          📷 ESCOLHER FOTO
+          <input id="bp_${b.id}" type="file" accept="image/*" style="display:none" onchange="previewBarberPhoto(${Number(b.id)},this)">
+        </label>
+        <div id="bpmsg_${b.id}" class="muted" style="margin-top:5px">
+          ${b.photo_data?'Foto cadastrada':'Nenhuma foto cadastrada'}
+        </div>
+      </div>
+    </div>
+
+    <label class="muted">
+      <input class="check" id="ba_${b.id}" type="checkbox" ${b.active!==false?'checked':''}>
+      Ativo
+    </label>
+
+    <div class="manageActions">
+      <button class="btn smallBtn" onclick="saveBarber(${Number(b.id)})">SALVAR BARBEIRO</button>
+    </div>
+  </div>
+ `).join('');
 }
 function renderManageServices(){
  const box=document.querySelector('#manageServices'); if(!box)return;
  box.innerHTML=services.map(s=>`<div class="manageItem"><div class="manageRow three"><input id="sn_${s.id}" value="${esc(s.name)}" placeholder="Nome do serviço"><input id="sd_${s.id}" type="number" min="5" value="${esc(s.duration)}" placeholder="Minutos"><input id="sp_${s.id}" type="number" min="0" step="0.01" value="${esc(s.price)}" placeholder="Valor"></div><label class="muted"><input class="check" id="sa_${s.id}" type="checkbox" ${s.active!==false?'checked':''}> Disponível</label><div class="manageActions"><button class="btn smallBtn" onclick="saveService(${Number(s.id)})">SALVAR SERVIÇO</button></div></div>`).join('');
 }
-async function saveBarber(id){
- const payload={id,name:document.querySelector(`#bn_${id}`).value.trim(),specialty:document.querySelector(`#bs_${id}`).value.trim(),rating:Number(document.querySelector(`#br_${id}`).value||5),active:document.querySelector(`#ba_${id}`).checked};
- try{await api('/api/admin/barbers',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify(payload)});await loadManagement();alert('Barbeiro atualizado.');}catch(e){alert('Não foi possível atualizar o barbeiro.');}
+
+  async function saveBarber(id){
+ const barber=barbers.find(b=>Number(b.id)===Number(id));
+
+ const payload={
+  id,
+  name:document.querySelector(`#bn_${id}`).value.trim(),
+  specialty:document.querySelector(`#bs_${id}`).value.trim(),
+  rating:Number(document.querySelector(`#br_${id}`).value||5),
+  active:document.querySelector(`#ba_${id}`).checked,
+  photo_data:barberPhotoDrafts[id]!==undefined
+    ? barberPhotoDrafts[id]
+    : (barber?.photo_data||null)
+ };
+
+ try{
+  await api('/api/admin/barbers',{
+   method:'POST',
+   headers:{
+    'X-Admin-Password':adminPassword,
+    'Content-Type':'application/json'
+   },
+   body:JSON.stringify(payload)
+  });
+
+  delete barberPhotoDrafts[id];
+
+  await loadManagement();
+  alert('Barbeiro atualizado com sucesso.');
+  }catch(e){
+  alert(e.message||'Não foi possível atualizar o barbeiro.');
+ }
 }
 async function saveService(id){
  const payload={id,name:document.querySelector(`#sn_${id}`).value.trim(),duration:Number(document.querySelector(`#sd_${id}`).value||30),price:Number(document.querySelector(`#sp_${id}`).value||0),active:document.querySelector(`#sa_${id}`).checked};
  try{await api('/api/admin/services',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify(payload)});await loadManagement();alert('Serviço atualizado.');}catch(e){alert('Não foi possível atualizar o serviço.');}
 }
+let newBarberPhotoDraft = null;
+
 function newBarberForm(){
- const box=document.querySelector('#manageBarbers');box.insertAdjacentHTML('afterbegin',`<div class="manageItem"><div class="manageRow three"><input id="newBN" placeholder="Nome"><input id="newBS" placeholder="Especialidade"><input id="newBR" type="number" min="0" max="5" step="0.1" value="5"></div><div class="manageActions"><button class="btn primary smallBtn" onclick="createBarber()">CRIAR</button></div></div>`);
+  const box=document.querySelector('#manageBarbers');
+
+  box.insertAdjacentHTML('afterbegin',`
+    <div class="manageItem" id="newBarberBox">
+
+      <div class="manageRow three">
+        <input id="newBN" placeholder="Nome">
+        <input id="newBS" placeholder="Especialidade">
+        <input id="newBR" type="number" min="0" max="5" step="0.1" value="5" placeholder="Nota">
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;margin:10px 0">
+
+        <div class="avatar" id="newBarberPreview" style="width:58px;height:58px">
+          ?
+        </div>
+
+        <div style="flex:1">
+          <label class="btn smallBtn" style="display:inline-block;cursor:pointer">
+            📷 ESCOLHER FOTO
+            <input
+              id="newBP"
+              type="file"
+              accept="image/*"
+              style="display:none"
+              onchange="previewNewBarberPhoto(this)"
+            >
+          </label>
+
+          <div id="newBPmsg" class="muted" style="margin-top:5px">
+            Nenhuma foto selecionada
+          </div>
+        </div>
+
+      </div>
+
+      <div class="manageActions">
+
+        <button class="btn primary smallBtn" onclick="createBarber()">
+          CRIAR BARBEIRO
+        </button>
+
+        <button class="btn smallBtn" onclick="cancelNewBarber()">
+          CANCELAR
+        </button>
+
+      </div>
+
+    </div>
+  `);
 }
-async function createBarber(){try{await api('/api/admin/barbers',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({name:document.querySelector('#newBN').value.trim(),specialty:document.querySelector('#newBS').value.trim(),rating:Number(document.querySelector('#newBR').value||5),active:true})});await loadManagement();alert('Barbeiro criado.');}catch(e){alert('Não foi possível criar o barbeiro.');}}
+
+function previewNewBarberPhoto(input){
+  const file=input?.files?.[0];
+  if(!file)return;
+
+  if(!file.type.startsWith("image/")){
+    alert("Selecione uma imagem válida.");
+    input.value="";
+    return;
+  }
+
+  if(file.size>5*1024*1024){
+    alert("A imagem deve ter no máximo 5 MB.");
+    input.value="";
+    return;
+  }
+
+  const reader=new FileReader();
+
+  reader.onload=()=>{
+    const img=new Image();
+
+    img.onload=()=>{
+      const max=1000;
+      let w=img.width;
+      let h=img.height;
+
+      if(w>max||h>max){
+        if(w>=h){
+          h=Math.round(h*max/w);
+          w=max;
+        }else{
+          w=Math.round(w*max/h);
+          h=max;
+        }
+      }
+
+      const canvas=document.createElement("canvas");
+      canvas.width=w;
+      canvas.height=h;
+
+      const ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,w,h);
+
+      newBarberPhotoDraft=canvas.toDataURL("image/jpeg",0.82);
+
+      const preview=document.querySelector("#newBarberPreview");
+
+      if(preview){
+        preview.outerHTML=
+          `<img id="newBarberPreview" src="${newBarberPhotoDraft}" alt="Foto do barbeiro" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:1px solid #5b471f">`;
+      }
+
+      const msg=document.querySelector("#newBPmsg");
+
+      if(msg){
+        msg.textContent="Foto selecionada. Clique em CRIAR BARBEIRO.";
+      }
+    };
+
+    img.src=reader.result;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function cancelNewBarber(){
+  newBarberPhotoDraft=null;
+
+  const box=document.querySelector("#newBarberBox");
+
+  if(box)box.remove();
+}
+
+async function createBarber(){
+  const name=document.querySelector("#newBN")?.value.trim();
+  const specialty=document.querySelector("#newBS")?.value.trim();
+  const rating=Number(document.querySelector("#newBR")?.value||5);
+
+  if(!name){
+    alert("Digite o nome do barbeiro.");
+    return;
+  }
+
+  try{
+    await api('/api/admin/barbers',{
+      method:'POST',
+      headers:{
+        'X-Admin-Password':adminPassword,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        name,
+        specialty,
+        rating,
+        active:true,
+        photo_data:newBarberPhotoDraft
+      })
+    });
+
+    newBarberPhotoDraft=null;
+
+    await loadManagement();
+
+    alert('Barbeiro criado com sucesso.');
+
+  }catch(e){
+    alert(e.message||'Não foi possível criar o barbeiro.');
+  }
+}
 function newServiceForm(){
  const box=document.querySelector('#manageServices');box.insertAdjacentHTML('afterbegin',`<div class="manageItem"><div class="manageRow three"><input id="newSN" placeholder="Nome do serviço"><input id="newSD" type="number" min="5" value="30"><input id="newSP" type="number" min="0" step="0.01" value="35"></div><div class="manageActions"><button class="btn primary smallBtn" onclick="createService()">CRIAR</button></div></div>`);
 }
 async function createService(){try{await api('/api/admin/services',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({name:document.querySelector('#newSN').value.trim(),duration:Number(document.querySelector('#newSD').value||30),price:Number(document.querySelector('#newSP').value||0),active:true})});await loadManagement();alert('Serviço criado.');}catch(e){alert('Não foi possível criar o serviço.');}}
-async function loadScheduleEditor(){
- const id=document.querySelector('#scheduleBarber')?.value; const box=document.querySelector('#scheduleEditor'); if(!id||!box)return;
- try{const data=await api(`/api/admin/schedule?barber_id=${encodeURIComponent(id)}`,{headers:{'X-Admin-Password':adminPassword}}); barberSchedules[id]=data.schedule||[];
- const map={}; (data.schedule||[]).forEach(x=>map[x.weekday]=x);
- const days=[['1','Segunda'],['2','Terça'],['3','Quarta'],['4','Quinta'],['5','Sexta'],['6','Sábado'],['0','Domingo']];
- box.innerHTML=`<table class="scheduleTable"><thead><tr><th>Dia</th><th>Aberto</th><th>Início</th><th>Fim</th><th>Intervalo início</th><th>Intervalo fim</th></tr></thead><tbody>${days.map(([d,n])=>{const x=map[d]||{open:d!=='0',start:'09:00',end:'18:00',break_start:'12:30',break_end:'14:00'};return `<tr><td>${n}</td><td><input class="check" type="checkbox" id="open_${d}" ${x.open?'checked':''}></td><td><input type="time" id="start_${d}" value="${esc(String(x.start||'09:00').slice(0,5))}"></td><td><input type="time" id="end_${d}" value="${esc(String(x.end||'18:00').slice(0,5))}"></td><td><input type="time" id="bs_${d}" value="${esc(String(x.break_start||'12:30').slice(0,5))}"></td><td><input type="time" id="be_${d}" value="${esc(String(x.break_end||'14:00').slice(0,5))}"></td></tr>`}).join('')}</tbody></table><div class="manageActions"><button class="btn primary" onclick="saveSchedule(${Number(id)})">SALVAR HORÁRIOS</button></div>`;
- }catch(e){box.innerHTML='<div class="notice err">Não foi possível carregar os horários.</div>';}
+async function loadGallery(){
+ const box=document.querySelector('#manageGallery');
+ if(!box)return;
+ try{
+  const data=await api('/api/admin/gallery',{headers:{'X-Admin-Password':adminPassword}});
+  galleryItems=Array.isArray(data)?data:[];
+  renderManageGallery();
+ }catch(e){
+  console.error(e);
+  box.innerHTML=`<div class="notice err">Não foi possível carregar a galeria.<br><small>${esc(e.message||'Erro desconhecido')}</small></div>`;
+ }
 }
+
+function renderManageGallery(){
+ const box=document.querySelector('#manageGallery');
+ if(!box)return;
+ if(!galleryItems.length){
+  box.innerHTML='<div class="notice">Nenhuma foto cadastrada ainda.</div>';
+  return;
+ }
+ box.innerHTML=`<div class="galleryAdminGrid">${galleryItems.map(g=>`
+  <div class="galleryAdminItem">
+    <img src="${g.photo_data||''}" alt="${esc(g.name||'Foto')}" id="gimg_${g.id}">
+    <div class="galleryAdminFields">
+      <input id="gn_${g.id}" value="${esc(g.name||'')}" placeholder="Nome da foto">
+      <input id="gc_${g.id}" value="${esc(g.category||'Tendências')}" placeholder="Categoria">
+      <textarea id="gd_${g.id}" placeholder="Descrição">${esc(g.description||'')}</textarea>
+      <input id="go_${g.id}" type="number" value="${Number(g.sort_order||0)}" placeholder="Ordem">
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <label class="btn smallBtn" style="cursor:pointer">📷 TROCAR FOTO<input type="file" accept="image/*" style="display:none" onchange="previewGalleryPhoto(${Number(g.id)},this)"></label>
+      <label class="muted"><input class="check" id="ga_${g.id}" type="checkbox" ${g.active!==false?'checked':''}> Ativa</label>
+    </div>
+    <div id="gmsg_${g.id}" class="muted" style="margin-top:6px">${g.active!==false?'Foto ativa':'Foto desativada'}</div>
+    <div class="manageActions"><button class="btn smallBtn" onclick="saveGallery(${Number(g.id)})">SALVAR FOTO</button></div>
+  </div>`).join('')}</div>`;
+}
+
+function compressImageFile(file,callback){
+ if(!file||!file.type.startsWith('image/')){alert('Selecione uma imagem válida.');return;}
+ if(file.size>5*1024*1024){alert('A imagem deve ter no máximo 5 MB.');return;}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  const img=new Image();
+  img.onload=()=>{
+   const max=1400; let w=img.width,h=img.height;
+   if(w>max||h>max){if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+   const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+   canvas.getContext('2d').drawImage(img,0,0,w,h);
+   callback(canvas.toDataURL('image/jpeg',0.84));
+  };
+  img.src=reader.result;
+ };
+ reader.readAsDataURL(file);
+}
+
+function previewGalleryPhoto(id,input){
+ const file=input?.files?.[0];
+ if(!file)return;
+ compressImageFile(file,data=>{
+  galleryPhotoDrafts[id]=data;
+  const img=document.querySelector(`#gimg_${id}`);if(img)img.src=data;
+  const msg=document.querySelector(`#gmsg_${id}`);if(msg)msg.textContent='Nova foto selecionada. Clique em SALVAR FOTO.';
+ });
+}
+
+function newGalleryForm(){
+ const box=document.querySelector('#manageGallery');
+ if(!box)return;
+ if(document.querySelector('#newGalleryBox'))return;
+ box.insertAdjacentHTML('afterbegin',`<div class="manageItem" id="newGalleryBox">
+  <div class="galleryAdminFields">
+   <input id="newGN" placeholder="Nome da foto">
+   <input id="newGC" value="Tendências" placeholder="Categoria">
+   <textarea id="newGD" placeholder="Descrição"></textarea>
+   <input id="newGO" type="number" value="0" placeholder="Ordem">
+  </div>
+  <div style="margin-top:10px"><label class="btn smallBtn" style="cursor:pointer">📷 ESCOLHER FOTO<input id="newGP" type="file" accept="image/*" style="display:none" onchange="previewNewGalleryPhoto(this)"></label><div id="newGPreview" class="muted" style="margin-top:8px">Nenhuma foto selecionada</div></div>
+  <div class="manageActions"><button class="btn primary smallBtn" onclick="createGallery()">CRIAR FOTO</button><button class="btn smallBtn" onclick="cancelNewGallery()">CANCELAR</button></div>
+ </div>`);
+}
+
+function previewNewGalleryPhoto(input){
+ const file=input?.files?.[0];if(!file)return;
+ compressImageFile(file,data=>{
+  newGalleryPhotoDraft=data;
+  const box=document.querySelector('#newGPreview');
+  if(box)box.innerHTML=`<img src="${data}" alt="Nova foto" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid #302817">`;
+ });
+}
+
+function cancelNewGallery(){newGalleryPhotoDraft=null;document.querySelector('#newGalleryBox')?.remove();}
+
+async function createGallery(){
+ const name=document.querySelector('#newGN')?.value.trim();
+ if(!name||!newGalleryPhotoDraft){alert('Informe o nome e selecione uma foto.');return;}
+ try{
+  await api('/api/admin/gallery',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({name,category:document.querySelector('#newGC').value.trim()||'Tendências',description:document.querySelector('#newGD').value.trim(),photo_data:newGalleryPhotoDraft,active:true,sort_order:Number(document.querySelector('#newGO').value||0)})});
+  newGalleryPhotoDraft=null;
+  await loadGallery();
+  alert('Foto adicionada à galeria.');
+ }catch(e){alert(e.message||'Não foi possível adicionar a foto.');}
+}
+
+async function saveGallery(id){
+ const item=galleryItems.find(g=>Number(g.id)===Number(id));
+ const photo=galleryPhotoDrafts[id]!==undefined?galleryPhotoDrafts[id]:(item?.photo_data||'');
+ try{
+  await api('/api/admin/gallery',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({id,name:document.querySelector(`#gn_${id}`).value.trim(),category:document.querySelector(`#gc_${id}`).value.trim()||'Tendências',description:document.querySelector(`#gd_${id}`).value.trim(),photo_data:photo,active:document.querySelector(`#ga_${id}`).checked,sort_order:Number(document.querySelector(`#go_${id}`).value||0)})});
+  delete galleryPhotoDrafts[id];
+  await loadGallery();
+  alert('Foto atualizada com sucesso.');
+ }catch(e){alert(e.message||'Não foi possível atualizar a foto.');}
+}
+
+async function clearAppointmentHistory(){
+ if(!adminPassword)return;
+ if(!confirm('Limpar o histórico? Serão removidos somente os agendamentos cancelados ou concluídos.'))return;
+ const msg=document.querySelector('#clearHistoryMessage');
+ try{
+  const result=await api('/api/admin/clear-history',{method:'POST',headers:{'X-Admin-Password':adminPassword}});
+  if(msg){msg.className='notice ok';msg.textContent=`Histórico limpo. ${Number(result.deleted||0)} agendamento(s) removido(s).`;}
+  await loadDashboard();
+ }catch(e){
+  if(msg){msg.className='notice err';msg.textContent=e.message||'Não foi possível limpar o histórico.';}
+ }
+}
+
+async function loadScheduleEditor(){
+ const id=document.querySelector('#scheduleBarber')?.value;
+ const box=document.querySelector('#scheduleEditor');
+ if(!id||!box)return;
+ try{
+  const data=await api(`/api/admin/schedule?barber_id=${encodeURIComponent(id)}`,{headers:{'X-Admin-Password':adminPassword}});
+  barberSchedules[id]=Array.isArray(data.schedule)?data.schedule:[];
+  const map={};
+  barberSchedules[id].forEach(x=>{
+    const day=x.day_of_week ?? x.weekday;
+    if(day!==undefined&&day!==null)map[String(day)]=x;
+  });
+  const days=[['1','Segunda'],['2','Terça'],['3','Quarta'],['4','Quinta'],['5','Sexta'],['6','Sábado'],['0','Domingo']];
+  box.innerHTML=`<table class="scheduleTable"><thead><tr><th>Dia</th><th>Aberto</th><th>Início</th><th>Fim</th><th>Intervalo início</th><th>Intervalo fim</th></tr></thead><tbody>${days.map(([d,n])=>{
+    const x=map[d]||{};
+    const active=x.active!==undefined?!!x.active:(x.open!==undefined?!!x.open:d!=='0');
+    const start=String(x.start_time??x.start??'09:00').slice(0,5);
+    const end=String(x.end_time??x.end??'20:30').slice(0,5);
+    const bs=String(x.break_start??'12:30').slice(0,5);
+    const be=String(x.break_end??'14:00').slice(0,5);
+    return `<tr><td>${n}</td><td><input class="check" type="checkbox" id="open_${d}" ${active?'checked':''}></td><td><input type="time" id="start_${d}" value="${esc(start)}"></td><td><input type="time" id="end_${d}" value="${esc(end)}"></td><td><input type="time" id="bs_${d}" value="${esc(bs)}"></td><td><input type="time" id="be_${d}" value="${esc(be)}"></td></tr>`;
+  }).join('')}</tbody></table><div class="manageActions"><button class="btn primary" onclick="saveSchedule(${Number(id)})">SALVAR HORÁRIOS</button></div>`;
+ }catch(e){
+  console.error(e);
+  box.innerHTML=`<div class="notice err">Não foi possível carregar os horários.<br><small>${esc(e.message||'Erro desconhecido')}</small></div>`;
+ }
+}
+
 async function saveSchedule(barberId){
- const days=['1','2','3','4','5','6','0']; const schedule=days.map(d=>({weekday:Number(d),open:document.querySelector(`#open_${d}`).checked,start:document.querySelector(`#start_${d}`).value,end:document.querySelector(`#end_${d}`).value,break_start:document.querySelector(`#bs_${d}`).value,break_end:document.querySelector(`#be_${d}`).value}));
- try{await api('/api/admin/schedule',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({barber_id:Number(barberId),schedule})});alert('Horários salvos.');}catch(e){alert('Não foi possível salvar os horários.');}
+ const days=['1','2','3','4','5','6','0'];
+ const schedule=days.map(d=>({
+  day_of_week:Number(d),
+  active:document.querySelector(`#open_${d}`).checked,
+  start_time:document.querySelector(`#start_${d}`).value,
+  end_time:document.querySelector(`#end_${d}`).value,
+  break_start:document.querySelector(`#bs_${d}`).value,
+  break_end:document.querySelector(`#be_${d}`).value
+ }));
+ try{
+  const result=await api('/api/admin/schedule',{
+   method:'POST',
+   headers:{'X-Admin-Password':adminPassword},
+   body:JSON.stringify({barber_id:Number(barberId),schedule})
+  });
+  alert(result.message||'Horários salvos com sucesso.');
+  await loadScheduleEditor();
+ }catch(e){
+  console.error('Erro ao salvar horários:',e);
+  alert(e.message||'Não foi possível salvar os horários.');
+ }
 }
 
 function adminLogout(){
