@@ -492,8 +492,35 @@ async function loadScheduleEditor(){
  }catch(e){box.innerHTML='<div class="notice err">Não foi possível carregar os horários.</div>';}
 }
 async function saveSchedule(barberId){
- const days=['1','2','3','4','5','6','0']; const schedule=days.map(d=>({weekday:Number(d),open:document.querySelector(`#open_${d}`).checked,start:document.querySelector(`#start_${d}`).value,end:document.querySelector(`#end_${d}`).value,break_start:document.querySelector(`#bs_${d}`).value,break_end:document.querySelector(`#be_${d}`).value}));
- try{await api('/api/admin/schedule',{method:'POST',headers:{'X-Admin-Password':adminPassword},body:JSON.stringify({barber_id:Number(barberId),schedule})});alert('Horários salvos.');}catch(e){alert('Não foi possível salvar os horários.');}
+  const days=['1','2','3','4','5','6','0'];
+
+  const schedule=days.map(d=>({
+    day_of_week:Number(d),
+    active:!!document.querySelector(`#open_${d}`)?.checked,
+    start_time:document.querySelector(`#start_${d}`)?.value||'',
+    end_time:document.querySelector(`#end_${d}`)?.value||'',
+    break_start:document.querySelector(`#bs_${d}`)?.value||'',
+    break_end:document.querySelector(`#be_${d}`)?.value||''
+  }));
+
+  try{
+    const r=await api('/api/admin/schedule',{
+      method:'POST',
+      headers:{
+        'X-Admin-Password':adminPassword
+      },
+      body:JSON.stringify({
+        barber_id:Number(barberId),
+        schedule
+      })
+    });
+
+    alert(`Horários salvos com sucesso! ${Number(r.days_saved||0)} dia(s).`);
+    await loadScheduleEditor();
+
+  }catch(e){
+    alert('Não foi possível salvar os horários: '+e.message);
+  }
 }
 
 async function clearHistory(){
