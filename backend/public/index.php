@@ -158,7 +158,26 @@ function sendVerificationEmail(string $email,string $name,string $code):bool{
   error_log('Studio A.A Brevo: e-mail aceito, messageId='.$decoded['messageId']);
   return true;
 }
-function scheduleRows(PDO $p,int $bid):array{$q=$p->prepare('SELECT day_of_week,active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week');$q->execute([$bid]);return $q->fetchAll();}
+function scheduleRows(PDO $p,int $bid):array{
+    $q=$p->prepare('SELECT day_of_week,active,start_time,end_time,break_start,break_end FROM studio_aa_schedules_v2 WHERE barber_id=? ORDER BY day_of_week');
+    $q->execute([$bid]);
+
+    $rows=$q->fetchAll(PDO::FETCH_ASSOC);
+    $out=[];
+
+    foreach($rows as $r){
+        $out[]=[
+            'weekday'=>(int)$r['day_of_week'],
+            'open'=>(bool)$r['active'],
+            'start'=>(string)($r['start_time']??''),
+            'end'=>(string)($r['end_time']??''),
+            'break_start'=>(string)($r['break_start']??''),
+            'break_end'=>(string)($r['break_end']??'')
+        ];
+    }
+
+    return $out;
+}
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/';$method=$_SERVER['REQUEST_METHOD'];
 try{if(str_starts_with($path,'/api/admin/')&&$path!=='/api/admin/login'&&$path!=='/api/admin/change-password'){
 $adminPassword=(string)($_SERVER['HTTP_X_ADMIN_PASSWORD']??'');
