@@ -371,7 +371,7 @@ if($path==='/api/admin/schedule'&&in_array($method,['POST','PUT'],true)){
                 $r['end_time'],
                 $r['break_start'],
                 $r['break_end'],
-                $r['active']
+                (bool)$r['active']
             ]);
         }
 
