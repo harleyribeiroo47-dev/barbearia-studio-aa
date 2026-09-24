@@ -1002,6 +1002,152 @@ async function clearAppointmentHistory(){
 }
 
 async function loadScheduleEditor(){
+  const id = document.querySelector('#scheduleBarber')?.value;
+  const box = document.querySelector('#scheduleEditor');
+
+  if(!id || !box) return;
+
+  try{
+    const data = await api(
+      `/api/admin/schedule?barber_id=${encodeURIComponent(id)}`,
+      {
+        headers:{
+          'X-Admin-Password':adminPassword
+        }
+      }
+    );
+
+    const schedule = Array.isArray(data?.schedule)
+      ? data.schedule
+      : [];
+
+    barberSchedules[id] = schedule;
+
+    const map = {};
+
+    schedule.forEach(function(item){
+      const weekday = Number(item.weekday);
+
+      if(Number.isInteger(weekday) && weekday >= 0 && weekday <= 6){
+        map[weekday] = item;
+      }
+    });
+
+    const days = [
+      [1,'Segunda'],
+      [2,'Terça'],
+      [3,'Quarta'],
+      [4,'Quinta'],
+      [5,'Sexta'],
+      [6,'Sábado'],
+      [0,'Domingo']
+    ];
+
+    const rows = days.map(function(day){
+
+      const d = day[0];
+      const name = day[1];
+
+      const item = map[d] || {
+        open:false,
+        start:'09:00',
+        end:'20:30',
+        break_start:'12:30',
+        break_end:'14:00'
+      };
+
+      const start = String(item.start || '09:00').slice(0,5);
+      const end = String(item.end || '20:30').slice(0,5);
+      const breakStart = String(item.break_start || '12:30').slice(0,5);
+      const breakEnd = String(item.break_end || '14:00').slice(0,5);
+
+      return `
+        <tr>
+          <td>${name}</td>
+
+          <td>
+            <input
+              class="check"
+              type="checkbox"
+              id="open_${d}"
+              ${item.open === true ? 'checked' : ''}
+            >
+          </td>
+
+          <td>
+            <input
+              type="time"
+              id="start_${d}"
+              value="${start}"
+            >
+          </td>
+
+          <td>
+            <input
+              type="time"
+              id="end_${d}"
+              value="${end}"
+            >
+          </td>
+
+          <td>
+            <input
+              type="time"
+              id="bs_${d}"
+              value="${breakStart}"
+            >
+          </td>
+
+          <td>
+            <input
+              type="time"
+              id="be_${d}"
+              value="${breakEnd}"
+            >
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    box.innerHTML = `
+      <table class="scheduleTable">
+        <thead>
+          <tr>
+            <th>Dia</th>
+            <th>Aberto</th>
+            <th>Início</th>
+            <th>Fim</th>
+            <th>Intervalo início</th>
+            <th>Intervalo fim</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+
+      <div class="manageActions">
+        <button
+          class="btn primary"
+          onclick="saveSchedule(${Number(id)})"
+        >
+          SALVAR HORÁRIOS
+        </button>
+      </div>
+    `;
+
+  }catch(e){
+
+    console.error('Erro ao carregar horários:', e);
+
+    box.innerHTML = `
+      <div class="notice err">
+        Não foi possível carregar os horários.
+      </div>
+    `;
+  }
+}
  const id=document.querySelector('#scheduleBarber')?.value;
  const box=document.querySelector('#scheduleEditor');
  if(!id||!box)return;
