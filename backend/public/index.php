@@ -286,7 +286,48 @@ if($path==='/api/client/profile'&&$method==='PATCH'){$p=db();$a=clientAuth($p);$
 if($path==='/api/client/appointments'&&$method==='GET'){$p=db();$a=clientAuth($p);$q=$p->prepare("SELECT a.id,a.barber_id,a.service_id,TO_CHAR(a.appointment_date,'YYYY-MM-DD') date,TO_CHAR(a.appointment_time,'HH24:MI') time,a.status,b.name barber_name,b.photo_data barber_photo,s.name service_name,s.duration,s.price,EXISTS(SELECT 1 FROM barber_ratings br WHERE br.appointment_id=a.id) rated FROM appointments a JOIN barbers b ON b.id=a.barber_id JOIN services s ON s.id=a.service_id WHERE a.customer_id=? ORDER BY a.appointment_date DESC,a.appointment_time DESC,a.id DESC");$q->execute([$a['customer_id']]);out($q->fetchAll());}
 if($path==='/api/client/rating'&&$method==='POST'){$p=db();$a=clientAuth($p);$d=body();$id=(int)($d['appointment_id']??0);$rating=(int)($d['rating']??0);$comment=trim((string)($d['comment']??''));if($rating<1||$rating>5)out(['error'=>'Escolha de 1 a 5 estrelas'],422);$q=$p->prepare('SELECT barber_id,status FROM appointments WHERE id=? AND customer_id=?');$q->execute([$id,$a['customer_id']]);$ap=$q->fetch();if(!$ap)out(['error'=>'Agendamento não encontrado'],404);if($ap['status']!=='completed')out(['error'=>'A avaliação fica disponível após o atendimento ser concluído'],422);$q=$p->prepare('SELECT id FROM barber_ratings WHERE appointment_id=?');$q->execute([$id]);if($q->fetch())out(['error'=>'Este atendimento já foi avaliado'],409);$p->prepare('INSERT INTO barber_ratings(appointment_id,customer_id,barber_id,rating,comment) VALUES(?,?,?,?,?)')->execute([$id,$a['customer_id'],(int)$ap['barber_id'],$rating,$comment]);$q=$p->prepare('SELECT ROUND(AVG(rating)::numeric,1) FROM barber_ratings WHERE barber_id=?');$q->execute([(int)$ap['barber_id']]);$avg=(float)($q->fetchColumn()?:5);$p->prepare('UPDATE barbers SET rating=? WHERE id=?')->execute([$avg,(int)$ap['barber_id']]);out(['ok'=>true,'barber_rating'=>$avg]);}
 if($path==='/api/availability'&&$method==='GET'){$bid=(int)($_GET['barber_id']??0);$date=trim((string)($_GET['date']??''));if($bid<=0||$date==='')out(['error'=>'barber_id e date são obrigatórios'],422);$p=db();$q=$p->prepare("SELECT a.id,TO_CHAR(a.appointment_time,'HH24:MI') time,a.status FROM appointments a WHERE a.barber_id=? AND a.appointment_date=? AND a.status IN ('pending','confirmed') ORDER BY a.appointment_time");$q->execute([$bid,$date]);out(['appointments'=>$q->fetchAll(),'available_times'=>[]]);}
-if($path==='/api/schedules'&&$method==='GET'){$bid=(int)($_GET['barber_id']??0);out(array_map(fn($r)=>['day_of_week'=>(int)$r['day_of_week'],'active'=>(bool)$r['active'],'start_time'=>$r['start_time'],'end_time'=>$r['end_time'],'break_start'=>$r['break_start'],'break_end'=>$r['break_end']],scheduleRows(db(),$bid)));}
+if(($path==='/api/schedule'||$path==='/api/schedules')&&$method==='GET'){
+    $bid=(int)($_GET['barber_id']??0);
+    $weekday=isset($_GET['weekday'])?(int)$_GET['weekday']:null;
+
+    if($bid<=0){
+        out(['error'=>'barber_id inválido'],422);
+    }
+
+    $rows=scheduleRows(db(),$bid);
+
+    if($weekday!==null){
+        foreach($rows as $r){
+            if((int)$r['weekday']===$weekday){
+                out([
+                    'schedule'=>[
+                        'weekday'=>(int)$r['weekday'],
+                        'open'=>(bool)$r['open'],
+                        'start'=>(string)$r['start'],
+                        'end'=>(string)$r['end'],
+                        'break_start'=>(string)$r['break_start'],
+                        'break_end'=>(string)$r['break_end']
+                    ]
+                ]);
+            }
+        }
+
+        out(['schedule'=>null]);
+    }
+
+    out([
+        'schedule'=>array_map(function($r){
+            return [
+                'weekday'=>(int)$r['weekday'],
+                'open'=>(bool)$r['open'],
+                'start'=>(string)$r['start'],
+                'end'=>(string)$r['end'],
+                'break_start'=>(string)$r['break_start'],
+                'break_end'=>(string)$r['break_end']
+            ];
+        },$rows)
+    ]);
+}
 if($path==='/api/barber/login'&&$method==='POST'){$d=body();$bid=(int)($d['barber_id']??0);$pw=(string)($d['password']??'');$p=db();$q=$p->prepare("SELECT b.id,b.name,ba.password_hash FROM barbers b JOIN barber_accounts ba ON ba.barber_id=b.id WHERE b.id=? AND b.active=TRUE");$q->execute([$bid]);$a=$q->fetch();if(!$a||!in_array(strtoupper($a['name']),['ALBERI','ALEX'],true)||!password_verify($pw,$a['password_hash']))out(['error'=>'Barbeiro ou senha incorretos'],401);$t=bin2hex(random_bytes(32));$p->prepare("INSERT INTO barber_sessions(token_hash,barber_id,expires_at) VALUES(?,?,NOW()+INTERVAL '30 days')")->execute([hash('sha256',$t),$bid]);out(['ok'=>true,'token'=>$t,'barber'=>['id'=>(int)$a['id'],'name'=>$a['name']]]);}
 if($path==='/api/barber/change-password'&&$method==='POST'){$p=db();$a=barberAuth($p);$d=body();$cur=(string)($d['current_password']??'');$new=(string)($d['new_password']??'');$conf=(string)($d['confirm_password']??'');if(strlen($new)<4||$new!==$conf)out(['error'=>'Nova senha inválida ou confirmação diferente'],422);$q=$p->prepare('SELECT password_hash FROM barber_accounts WHERE barber_id=?');$q->execute([$a['barber_id']]);$h=(string)$q->fetchColumn();if(!password_verify($cur,$h))out(['error'=>'Senha atual incorreta'],401);if(password_verify($new,$h))out(['error'=>'A nova senha deve ser diferente da atual'],422);$p->prepare('UPDATE barber_accounts SET password_hash=?,updated_at=NOW() WHERE barber_id=?')->execute([password_hash($new,PASSWORD_DEFAULT),$a['barber_id']]);out(['ok'=>true]);}
 if($path==='/api/barber/logout'&&$method==='POST'){$p=db();$t=bearerToken();if($t!=='')$p->prepare('DELETE FROM barber_sessions WHERE token_hash=?')->execute([hash('sha256',$t)]);out(['ok'=>true]);}
